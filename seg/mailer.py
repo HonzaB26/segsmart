@@ -33,7 +33,18 @@ def _body(card: dict, lang: str, currency: str) -> str:
 
 
 def build_mailing(card: dict, recipients: list, lang="en", currency="£") -> dict:
-    """Campaign card + recipient rows -> a self-contained mailing artifact."""
+    """Campaign card + recipient rows -> a self-contained mailing artifact a
+    mailer can consume directly (recipients carry e-mail + name, not just ids)."""
+    rows = []
+    for r in recipients:
+        cid = str(r.get("id") or r.get("customer_id") or "")
+        if not cid:
+            continue
+        email = str(r.get("email") or "")
+        if not email and "@" in cid:               # the id IS the e-mail
+            email = cid
+        rows.append({"customer_id": cid, "email": email,
+                     "name": str(r.get("name") or "")})
     return {
         "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "segment": card.get("segment"),
@@ -44,9 +55,8 @@ def build_mailing(card: dict, recipients: list, lang="en", currency="£") -> dic
         "estimate": card.get("estimate"),
         "language": lang,
         "currency": currency,
-        "recipients": [{"customer_id": str(r.get("id") or r.get("customer_id") or "")}
-                       for r in recipients
-                       if (r.get("id") or r.get("customer_id"))],
+        "recipients": rows,
+        "deliverable": sum(1 for r in rows if r["email"]),
     }
 
 

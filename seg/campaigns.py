@@ -17,11 +17,14 @@ MODEL = os.environ.get("SEG_LLM_MODEL", "gemma4:26b")   # quality model for camp
 # The model writes COPY, never commercial terms: no invented voucher codes
 # (qwen happily fabricates Czech-lettered codes nobody's shop accepts).
 # Discounts/codes are added by the OWNER via apply_discount().
-NO_CODES_EN = ("NEVER invent a discount code, voucher code or coupon code. "
-               "Do not write any specific code string. The shop owner adds "
-               "real codes separately.")
-NO_CODES_CS = ("NIKDY si nevymýšlej slevový kód, kód kupónu ani konkrétní "
-               "kódové slovo. Skutečné kódy doplní majitel obchodu sám.")
+NO_CODES_EN = ("NEVER invent a discount code, voucher code or coupon code, and "
+               "NEVER promise a specific discount percentage or amount — the "
+               "shop owner sets real discounts separately. Describe the offer "
+               "generically (e.g. 'a comeback offer', 'a loyalty reward').")
+NO_CODES_CS = ("NIKDY si nevymýšlej slevový kód ani kupón a NIKDY neslibuj "
+               "konkrétní výši slevy v procentech či korunách – skutečnou slevu "
+               "nastavuje majitel obchodu sám. Nabídku popiš obecně (např. "
+               "'návratová nabídka', 'odměna za věrnost').")
 
 SYSTEM_EN = (
     "You are a pragmatic retention-marketing strategist for a small business. "
@@ -125,6 +128,18 @@ def _sanitize_card(c: dict, keep: str | None = None) -> dict:
     return c
 
 
+# a concrete discount the owner never set: '15 %', '20% off', '100 Kč sleva'…
+_INVENTED_DISCOUNT = re.compile(
+    r"\d+\s*%|\d+\s*(?:kč|czk|eur|€|\$|£)\b", re.IGNORECASE)
+
+
+def has_invented_discount(c: dict) -> bool:
+    """True when the model promised a concrete discount value. Surgery on the
+    copy would mangle the grammar, so callers fall back to clean rule-based
+    text instead."""
+    return any(_INVENTED_DISCOUNT.search(c.get(k) or "") for k in _TEXT_FIELDS)
+
+
 def _fallback(seg: str, lang="en") -> dict:
     book = PLAYBOOK_CS if lang == "cs" else PLAYBOOK
     default = ("Oslovit segment", "Cílená nabídka", "E-mail") if lang == "cs" \
@@ -158,8 +173,11 @@ def card_for_segment(seg_name: str, prof_row: dict, hook: dict, use_llm=True,
         raw = _ollama(prompt, SYSTEM_CS if lang == "cs" else SYSTEM_EN)
         try:
             c = _sanitize_card(_extract_json(raw))   # no invented voucher codes
-            c.setdefault("priority", "medium")
-            c["_source"] = MODEL
+            if has_invented_discount(c):             # nor invented discounts —
+                c = _fallback(seg_name, lang)        # those come from the owner
+            else:
+                c.setdefault("priority", "medium")
+                c["_source"] = MODEL
         except Exception:
             c = _fallback(seg_name, lang)
 

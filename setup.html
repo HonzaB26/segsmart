@@ -54,32 +54,32 @@
 <div class="wrap">
   <header>
     <div class="logo">Seg<span>Smart</span></div>
-    <div class="sub">data setup</div>
-    <div class="badge">🔒 Data stays on this machine</div>
-    <a class="nav" href="/">← Dashboard</a>
+    <div class="sub" data-i="sub">data setup</div>
+    <div class="badge" data-i="badge">🔒 Data stays on this machine</div>
+    <a class="nav" href="/" data-i="nav_dash">← Dashboard</a>
+    <a class="nav" href="#" id="langtoggle" title="UI language">🌐 CZ</a>
   </header>
 
   <!-- ============ 1 · upload a file ============ -->
   <div class="card">
-    <h3><span class="num">1</span>Upload a file</h3>
-    <div class="hint">CSV, TSV or Excel — column names in any language, any encoding, any delimiter.
-      A local model proposes how it maps to our format; you confirm. Nothing leaves this machine.</div>
+    <h3><span class="num">1</span><span data-i="h_upload">Upload a file</span></h3>
+    <div class="hint" data-i="hint_upload">CSV, TSV or Excel — column names in any language, any encoding, any delimiter. A local model proposes how it maps to our format; you confirm. Nothing leaves this machine.</div>
     <div class="controls">
       <input type="file" id="file" accept=".csv,.tsv,.txt,.xls,.xlsx">
-      <button id="analyze">Analyze my file ▸</button>
+      <button id="analyze" data-i="b_analyze">Analyze my file ▸</button>
       <span class="status" id="u_status"></span>
     </div>
     <div id="u_mapper" style="display:none;margin-top:16px">
       <div id="u_detected" class="hint"></div>
-      <table><thead><tr><th>Our field</th><th>Your column</th></tr></thead>
+      <table><thead><tr><th data-i="th_our">Our field</th><th data-i="th_their">Your column</th></tr></thead>
         <tbody id="u_maprows"></tbody></table>
       <div class="controls" style="margin-top:12px">
-        <label class="cur">Currency <input type="text" id="u_currency"></label>
+        <label class="cur"><span data-i="l_currency">Currency</span> <input type="text" id="u_currency"></label>
         <label class="cur">Decimal <select id="u_decimal"><option value=".">.</option><option value=",">,</option></select></label>
-        <label class="cur">Language <select id="u_lang"><option value="en">en</option><option value="cs">cs</option><option value="de">de</option></select></label>
-        <label class="cur"><input type="checkbox" id="u_llm" checked> AI campaign copy</label>
-        <label class="cur"><input type="checkbox" id="u_remember" checked> remember as my data source</label>
-        <button id="u_run">Run with this mapping ▸</button>
+        <label class="cur"><span data-i="l_camplang">Campaign language</span> <select id="u_lang"><option value="en">en</option><option value="cs">cs</option><option value="de">de</option></select></label>
+        <label class="cur"><input type="checkbox" id="u_llm" checked> <span data-i="l_ai">AI campaign copy</span></label>
+        <label class="cur"><input type="checkbox" id="u_remember" checked> <span data-i="l_remember">remember as my data source</span></label>
+        <button id="u_run" data-i="b_run">Run with this mapping ▸</button>
         <span class="status" id="u_run_status"></span>
       </div>
       <div class="hint">“Remember” stores the file under <code>data/uploads/</code> and writes the
@@ -90,9 +90,8 @@
 
   <!-- ============ 2 · connect a database ============ -->
   <div class="card">
-    <h3><span class="num">2</span>Or connect a database</h3>
-    <div class="hint">Read-only SELECT against your shop database. Use <code>${ENV_VAR}</code> for
-      passwords/tokens — expanded from the environment at run time, never stored in the file.</div>
+    <h3><span class="num">2</span><span data-i="h_db">Or connect a database</span></h3>
+    <div class="hint" data-i="hint_db">Read-only SELECT against your shop database. Use <code>${ENV_VAR}</code> for passwords/tokens — expanded from the environment at run time, never stored in the file.</div>
     <label class="f">Type
       <select id="c_type">
         <option value="sql">SQL — MySQL / MariaDB / PostgreSQL / SQLite (Shoptet, WooCommerce, PrestaShop, Magento…)</option>
@@ -117,20 +116,20 @@
       <label class="f">API token <input type="text" id="c_token" placeholder="${SHOPTET_TOKEN}"></label>
     </div>
     <div class="controls">
-      <button id="c_test">Test &amp; preview ▸</button>
+      <button id="c_test" data-i="b_test">Test &amp; preview ▸</button>
       <span class="status" id="c_status"></span>
     </div>
     <div id="c_previewbox" class="preview" style="display:none"></div>
     <div id="c_mapper" style="display:none;margin-top:14px">
       <div id="c_detected" class="hint"></div>
-      <table><thead><tr><th>Our field</th><th>Your column</th></tr></thead>
+      <table><thead><tr><th data-i="th_our">Our field</th><th data-i="th_their">Your column</th></tr></thead>
         <tbody id="c_maprows"></tbody></table>
       <div class="controls" style="margin-top:12px">
-        <label class="cur">Currency <input type="text" id="c_currency"></label>
+        <label class="cur"><span data-i="l_currency">Currency</span> <input type="text" id="c_currency"></label>
         <label class="cur">Decimal <select id="c_decimal"><option value=".">.</option><option value=",">,</option></select></label>
-        <label class="cur">Language <select id="c_lang"><option value="en">en</option><option value="cs">cs</option><option value="de">de</option></select></label>
-        <label class="cur"><input type="checkbox" id="c_llm" checked> AI campaign copy</label>
-        <button id="c_save">Save &amp; run ▸</button>
+        <label class="cur"><span data-i="l_camplang">Campaign language</span> <select id="c_lang"><option value="en">en</option><option value="cs">cs</option><option value="de">de</option></select></label>
+        <label class="cur"><input type="checkbox" id="c_llm" checked> <span data-i="l_ai">AI campaign copy</span></label>
+        <button id="c_save" data-i="b_saverun">Save &amp; run ▸</button>
         <span class="status" id="c_run_status"></span>
       </div>
     </div>
@@ -138,14 +137,14 @@
 
   <!-- ============ 3 · the config file ============ -->
   <div class="card">
-    <h3><span class="num">3</span>Configuration file</h3>
+    <h3><span class="num">3</span><span data-i="h_cfg">Configuration file</span></h3>
     <div class="hint">Everything above is saved to <code id="cfg_path">config/segsmart.json</code> —
       plain JSON, also editable by hand (re-read on every run, no restart needed).</div>
     <textarea id="cfg_text" rows="12" spellcheck="false"></textarea>
     <div class="controls">
-      <button class="ghost" id="cfg_reload">Reload</button>
-      <button id="cfg_save">Save config</button>
-      <button class="ghost" id="cfg_run">Run from config ▸</button>
+      <button class="ghost" id="cfg_reload" data-i="b_reload">Reload</button>
+      <button id="cfg_save" data-i="b_savecfg">Save config</button>
+      <button class="ghost" id="cfg_run" data-i="b_runcfg">Run from config ▸</button>
       <span class="status" id="cfg_status"></span>
     </div>
   </div>
@@ -158,39 +157,120 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,
   c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+// ---- UI language (chrome only; the "Campaign language" selects control the
+// CONTENT language of cards/warnings per run) ----
+const UI = {
+en:{
+  sub:'data setup', badge:'🔒 Data stays on this machine', nav_dash:'← Dashboard',
+  h_upload:'Upload a file',
+  hint_upload:'CSV, TSV or Excel — column names in any language, any encoding, any delimiter. A local model proposes how it maps to our format; you confirm. Nothing leaves this machine.',
+  b_analyze:'Analyze my file ▸', b_run:'Run with this mapping ▸',
+  h_db:'Or connect a database',
+  hint_db:'Read-only SELECT against your shop database. Use <code>${ENV_VAR}</code> for passwords/tokens — expanded from the environment at run time, never stored in the file.',
+  b_test:'Test &amp; preview ▸', b_saverun:'Save &amp; run ▸',
+  h_cfg:'Configuration file', b_reload:'Reload', b_savecfg:'Save config',
+  b_runcfg:'Run from config ▸',
+  l_camplang:'Campaign language', l_currency:'Currency', l_ai:'AI campaign copy',
+  l_remember:'remember as my data source',
+  th_our:'Our field', th_their:'Your column', none:'— none —',
+  pick_file:'pick a file first (CSV, TSV or Excel)', analyzing:'analyzing locally…',
+  detected_by:'detected by {s} — please confirm ↓',
+  missing:"⚠️ couldn't auto-detect: <b>{m}</b> — set them below",
+  all_ok:'✓ all required fields detected — review and run',
+  set_first:'set {k} first', set_money:'set a unit price or a total column first',
+  running:'running locally…', connecting:'connecting…',
+  connected:'connected ✓ — {n} rows', saving:'saving & running…',
+  done:'done ✓ ({n} customers', warnings:'data warning(s)',
+  view_dash:'view dashboard', not_saved:'· not saved',
+  running_cfg:'running from config…', saved_to:'saved ✓ → {p}',
+  bad_json:'not valid JSON: {e}',
+  f_customer_id:'Customer (id / e-mail)', f_order_id:'Order / invoice id (optional)',
+  f_order_date:'Order date', f_quantity:'Quantity (optional)',
+  f_unit_price:'Unit price', f_line_value:'Line / order total (optional)',
+  f_product:'Product (optional)', f_country:'Country (optional)',
+  f_customer_email:'Customer e-mail (optional, for mailings)',
+  f_customer_name:'Customer name (optional, for mailings)',
+},
+cs:{
+  sub:'nastavení dat', badge:'🔒 Data zůstávají na tomto počítači', nav_dash:'← Přehled',
+  h_upload:'Nahrát soubor',
+  hint_upload:'CSV, TSV nebo Excel – názvy sloupců v libovolném jazyce, kódování i s libovolným oddělovačem. Lokální model navrhne mapování na náš formát; vy ho potvrdíte. Nic neopouští tento počítač.',
+  b_analyze:'Analyzovat soubor ▸', b_run:'Spustit s tímto mapováním ▸',
+  h_db:'Nebo připojit databázi',
+  hint_db:'Pouze čtecí SELECT nad databází vašeho e-shopu. Pro hesla/tokeny použijte <code>${ENV_VAR}</code> – doplní se z prostředí při běhu, do souboru se neukládají.',
+  b_test:'Otestovat a zobrazit náhled ▸', b_saverun:'Uložit a spustit ▸',
+  h_cfg:'Konfigurační soubor', b_reload:'Znovu načíst', b_savecfg:'Uložit konfiguraci',
+  b_runcfg:'Spustit z konfigurace ▸',
+  l_camplang:'Jazyk kampaní', l_currency:'Měna', l_ai:'AI texty kampaní',
+  l_remember:'zapamatovat jako můj zdroj dat',
+  th_our:'Naše pole', th_their:'Váš sloupec', none:'— žádný —',
+  pick_file:'nejdřív vyberte soubor (CSV, TSV nebo Excel)', analyzing:'analyzuji lokálně…',
+  detected_by:'rozpoznáno pomocí {s} – zkontrolujte níže ↓',
+  missing:'⚠️ nepodařilo se rozpoznat: <b>{m}</b> – nastavte níže',
+  all_ok:'✓ všechna povinná pole rozpoznána – zkontrolujte a spusťte',
+  set_first:'nejdřív nastavte {k}', set_money:'nastavte jednotkovou cenu, nebo sloupec s celkovou částkou',
+  running:'zpracovávám lokálně…', connecting:'připojuji…',
+  connected:'připojeno ✓ – {n} řádků', saving:'ukládám a spouštím…',
+  done:'hotovo ✓ ({n} zákazníků', warnings:'upozornění na data',
+  view_dash:'zobrazit přehled', not_saved:'· neuloženo',
+  running_cfg:'spouštím z konfigurace…', saved_to:'uloženo ✓ → {p}',
+  bad_json:'neplatný JSON: {e}',
+  f_customer_id:'Zákazník (ID / e-mail)', f_order_id:'Číslo objednávky (volitelné)',
+  f_order_date:'Datum objednávky', f_quantity:'Množství (volitelné)',
+  f_unit_price:'Jednotková cena', f_line_value:'Celková částka řádku/objednávky (volitelné)',
+  f_product:'Produkt (volitelné)', f_country:'Země (volitelné)',
+  f_customer_email:'E-mail zákazníka (volitelné, pro rozesílky)',
+  f_customer_name:'Jméno zákazníka (volitelné, pro rozesílky)',
+},
+};
+let uiLang = new URLSearchParams(location.search).get('lang')
+  || localStorage.getItem('seg_ui_lang')
+  || (((navigator.language||'').toLowerCase().startsWith('cs'))?'cs':'en');
+if(!UI[uiLang]) uiLang='en';
+const t = k => (UI[uiLang][k] ?? UI.en[k] ?? k);
+const tf = (k, vars) => Object.entries(vars).reduce(
+  (s,[a,b])=>s.replaceAll('{'+a+'}', b), t(k));
+function applyLang(){
+  document.querySelectorAll('[data-i]').forEach(el=>{ el.innerHTML=t(el.dataset.i); });
+  $('#langtoggle').textContent = uiLang==='cs' ? '🌐 EN' : '🌐 CZ';
+  document.documentElement.lang = uiLang;
+}
+
 const CANON_FIELDS = [
-  ['customer_id','Customer (id / e-mail)',true],
-  ['order_id','Order / invoice id (optional)',false],
-  ['order_date','Order date',true],
-  ['quantity','Quantity (optional)',false],
-  ['unit_price','Unit price',false],
-  ['line_value','Line / order total (optional)',false],
-  ['product','Product (optional)',false],
-  ['country','Country (optional)',false],
+  ['customer_id',true],
+  ['order_id',false],
+  ['order_date',true],
+  ['quantity',false],
+  ['unit_price',false],
+  ['line_value',false],
+  ['customer_email',false],
+  ['customer_name',false],
+  ['product',false],
+  ['country',false],
 ];
 
 function buildMapper(prefix, d){
   const header=d.header||[];
-  const opt=sel=>['<option value="">— none —</option>']
+  const opt=sel=>[`<option value="">${t('none')}</option>`]
     .concat(header.map(h=>`<option value="${esc(h)}" ${h===sel?'selected':''}>${esc(h)}</option>`)).join('');
-  $('#'+prefix+'_maprows').innerHTML = CANON_FIELDS.map(([k,label,req])=>
-    `<tr><td>${label}${req?' <span style="color:var(--red)">*</span>':''}</td>`+
+  $('#'+prefix+'_maprows').innerHTML = CANON_FIELDS.map(([k,req])=>
+    `<tr><td>${t('f_'+k)}${req?' <span style="color:var(--red)">*</span>':''}</td>`+
     `<td><select data-k="${k}" style="min-width:200px">${opt((d.mapping||{})[k])}</select></td></tr>`).join('');
   $('#'+prefix+'_currency').value = d.currency||'';
   $('#'+prefix+'_decimal').value = d.decimal||'.';
   $('#'+prefix+'_lang').value = d.language||'en';
   const miss=(d.missing_required||[]);
   $('#'+prefix+'_detected').innerHTML = miss.length
-    ? `⚠️ couldn't auto-detect: <b>${esc(miss.join(', '))}</b> — set them below`
-    : `✓ all required fields detected — review and run`;
+    ? tf('missing', {m:esc(miss.join(', '))})
+    : t('all_ok');
   $('#'+prefix+'_mapper').style.display='block';
 }
 
 function readMapper(prefix, statusEl){
   const mapping={};
   document.querySelectorAll('#'+prefix+'_maprows select').forEach(s=>{ if(s.value) mapping[s.dataset.k]=s.value; });
-  for(const [k,,req] of CANON_FIELDS) if(req && !mapping[k]){ statusEl.textContent='set '+k+' first'; return null; }
-  if(!mapping.unit_price && !mapping.line_value){ statusEl.textContent='set a unit price or a total column first'; return null; }
+  for(const [k,req] of CANON_FIELDS) if(req && !mapping[k]){ statusEl.textContent=tf('set_first',{k}); return null; }
+  if(!mapping.unit_price && !mapping.line_value){ statusEl.textContent=t('set_money'); return null; }
   return mapping;
 }
 
@@ -210,14 +290,14 @@ async function fileToB64(f){
 
 $('#analyze').onclick = async ()=>{
   const f=$('#file').files[0];
-  if(!f){ $('#u_status').textContent='pick a file first (CSV, TSV or Excel)'; return; }
+  if(!f){ $('#u_status').textContent=t('pick_file'); return; }
   uploadedB64 = await fileToB64(f); uploadedName = f.name;
-  $('#u_status').textContent='analyzing locally…';
+  $('#u_status').textContent=t('analyzing');
   try{
     const d=await post('/api/infer_mapping',{file_b64:uploadedB64, filename:uploadedName, use_llm:true});
     if(d.error){ $('#u_status').textContent='error: '+d.error; return; }
     buildMapper('u', d);
-    $('#u_status').textContent='detected by '+(d.source||'heuristic')+' — please confirm ↓';
+    $('#u_status').innerHTML=tf('detected_by',{s:esc(d.source||'heuristic')});
   }catch(e){ $('#u_status').textContent='error: '+e; }
 };
 
@@ -225,7 +305,7 @@ $('#u_run').onclick = async ()=>{
   const st=$('#u_run_status');
   const mapping=readMapper('u', st); if(!mapping) return;
   const remember=$('#u_remember').checked;
-  st.textContent='running locally…';
+  st.textContent=t('running');
   try{
     let j;
     if(remember){
@@ -242,10 +322,10 @@ $('#u_run').onclick = async ()=>{
     }
     if(j.error){ st.textContent='error: '+j.error; return; }
     const w=((j.quality||{}).warnings||[]).length;
-    st.innerHTML=`done ✓ (${j.kpis.total_customers} customers`
-      + (w?`, ⚠ ${w} data warning${w>1?'s':''}`:'')
-      + `) — <a href="/" style="color:var(--teal)">view dashboard</a>`
-      + (remember?'':' · not saved');
+    st.innerHTML=tf('done',{n:j.kpis.total_customers})
+      + (w?`, ⚠ ${w} ${t('warnings')}`:'')
+      + `) — <a href="/" style="color:var(--teal)">${t('view_dash')}</a>`
+      + (remember?'':' '+t('not_saved'));
   }catch(e){ st.textContent='error: '+e; }
 };
 
@@ -266,12 +346,12 @@ function connectorSource(){
 }
 
 $('#c_test').onclick = async ()=>{
-  $('#c_status').textContent='connecting…';
+  $('#c_status').textContent=t('connecting');
   $('#c_previewbox').style.display='none'; $('#c_mapper').style.display='none';
   try{
     const d=await post('/api/preview_source',{source:connectorSource(), use_llm:true});
     if(d.error){ $('#c_status').textContent='error: '+d.error; return; }
-    $('#c_status').textContent=`connected ✓ — ${d.total_rows.toLocaleString()} rows`;
+    $('#c_status').textContent=tf('connected',{n:d.total_rows.toLocaleString()});
     $('#c_previewbox').style.display='block';
     $('#c_previewbox').innerHTML = '<table><thead><tr>'
       + d.header.map(h=>`<th>${esc(h)}</th>`).join('') + '</tr></thead><tbody>'
@@ -288,15 +368,15 @@ $('#c_save').onclick = async ()=>{
   const config={source,
     output:{currency:$('#c_currency').value||'€', language:$('#c_lang').value},
     ai:{use_llm:$('#c_llm').checked}};
-  st.textContent='saving & running…';
+  st.textContent=t('saving');
   try{
     const j=await post('/api/run_config',{config, save:true});
     if(j.error){ st.textContent='error: '+j.error; return; }
     loadConfig();
     const w=((j.quality||{}).warnings||[]).length;
-    st.innerHTML=`done ✓ (${j.kpis.total_customers} customers`
-      + (w?`, ⚠ ${w} data warning${w>1?'s':''}`:'')
-      + `) — <a href="/" style="color:var(--teal)">view dashboard</a>`;
+    st.innerHTML=tf('done',{n:j.kpis.total_customers})
+      + (w?`, ⚠ ${w} ${t('warnings')}`:'')
+      + `) — <a href="/" style="color:var(--teal)">${t('view_dash')}</a>`;
   }catch(e){ st.textContent='error: '+e; }
 };
 
@@ -312,18 +392,25 @@ $('#cfg_reload').onclick=loadConfig;
 $('#cfg_save').onclick=async ()=>{
   let cfg;
   try{ cfg=JSON.parse($('#cfg_text').value); }
-  catch(e){ $('#cfg_status').textContent='not valid JSON: '+e.message; return; }
+  catch(e){ $('#cfg_status').textContent=tf('bad_json',{e:e.message}); return; }
   const d=await post('/api/config',{config:cfg});
-  $('#cfg_status').textContent = d.error?('error: '+d.error):('saved ✓ → '+d.saved);
+  $('#cfg_status').textContent = d.error?('error: '+d.error):tf('saved_to',{p:d.saved});
 };
 $('#cfg_run').onclick=async ()=>{
-  $('#cfg_status').textContent='running from config…';
+  $('#cfg_status').textContent=t('running_cfg');
   try{
     const j=await post('/api/run_config',{save:false});
     $('#cfg_status').innerHTML = j.error?('error: '+esc(j.error))
-      :`done ✓ (${j.kpis.total_customers} customers) — <a href="/" style="color:var(--teal)">view dashboard</a>`;
+      :tf('done',{n:j.kpis.total_customers})+`) — <a href="/" style="color:var(--teal)">${t('view_dash')}</a>`;
   }catch(e){ $('#cfg_status').textContent='error: '+e; }
 };
+$('#langtoggle').onclick=(e)=>{
+  e.preventDefault();
+  uiLang = uiLang==='cs'?'en':'cs';
+  localStorage.setItem('seg_ui_lang', uiLang);
+  applyLang();
+};
+applyLang();
 loadConfig();
 </script>
 </body>

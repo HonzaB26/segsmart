@@ -4,7 +4,7 @@ Runs entirely locally. Emits one out/result.json the dashboard renders.
 Swap the loader call to point at a real export; nothing else changes.
 """
 from __future__ import annotations
-import json, os, time
+import json, os, re, time
 import pandas as pd
 
 from seg.loader import load_uci, load_csv, load_eshop, summary
@@ -58,39 +58,73 @@ SUSPICIOUS_DROPS = {"unparseable date", "unparseable price", "missing customer i
                     "missing customer / date / value"}
 
 
-def _quality(df, meta, ingest, sil, ari):
+_WARN_TEXTS = {
+    "short-window": {
+        "en": ("The data covers only {d} days. Frequency-based segmentation "
+               "needs roughly 6+ months — on a short window almost everyone "
+               "looks like a one-time buyer."),
+        "cs": ("Data pokrývají jen {d} dní. Segmentace podle frekvence nákupů "
+               "potřebuje zhruba 6+ měsíců – na krátkém okně vypadá skoro "
+               "každý jako jednorázový zákazník."),
+    },
+    "tiny-money": {
+        "en": ("Median order value is {m:.2f} — money columns were probably "
+               "parsed with the wrong decimal separator. Re-check the mapping "
+               "(decimal , vs .)."),
+        "cs": ("Mediánová hodnota objednávky je {m:.2f} – peněžní sloupce se "
+               "nejspíš načetly se špatným desetinným oddělovačem. Zkontrolujte "
+               "mapování (desetinná , vs .)."),
+    },
+    "few-customers": {
+        "en": ("Only {n} customers — quantile-based segments are coarse below "
+               "~50; read them as rough groups."),
+        "cs": ("Jen {n} zákazníků – kvantilové segmenty jsou pod ~50 zákazníky "
+               "hrubé; berte je jako orientační skupiny."),
+    },
+    "high-drop": {
+        "en": ("{p} % of rows were dropped as unparseable — the column mapping "
+               "or the decimal/date format is probably off for part of the file."),
+        "cs": ("{p} % řádků se nepodařilo načíst – mapování sloupců nebo formát "
+               "desetinných čísel či dat je pro část souboru nejspíš špatně."),
+    },
+    "weak-structure": {
+        "en": ("Rule-based segments and KMeans clusters barely agree (ARI "
+               "{a:.2f}) — segment boundaries are uncertain. Often a symptom "
+               "of a short or sparse history."),
+        "cs": ("Pravidlové segmenty a shluky KMeans se téměř neshodují (ARI "
+               "{a:.2f}) – hranice segmentů jsou nejisté. Bývá to příznak "
+               "krátké nebo řídké historie."),
+    },
+}
+
+
+def _quality(df, meta, ingest, sil, ari, lang="en"):
     """Honesty warnings: tell the user when the data can't support the
-    conclusions, instead of pretending it can."""
+    conclusions, instead of pretending it can. Warnings are content, so they
+    follow the run's content language."""
+    lang = "cs" if lang == "cs" else "en"
+
+    def warn(code, severity, **fmt):
+        return {"code": code, "severity": severity,
+                "message": _WARN_TEXTS[code][lang].format(**fmt)}
+
     w = []
     span_days = int((df["order_date"].max() - df["order_date"].min()).days)
     if span_days < 180:
-        w.append({"code": "short-window", "severity": "high", "message":
-                  f"The data covers only {span_days} days. Frequency-based "
-                  "segmentation needs roughly 6+ months — on a short window "
-                  "almost everyone looks like a one-time buyer."})
+        w.append(warn("short-window", "high", d=span_days))
     med_order = float(df.groupby("order_id")["line_value"].sum().median())
     if med_order < 1:
-        w.append({"code": "tiny-money", "severity": "high", "message":
-                  f"Median order value is {med_order:.2f} — money columns were "
-                  "probably parsed with the wrong decimal separator. Re-check "
-                  "the mapping (decimal , vs .)."})
+        w.append(warn("tiny-money", "high", m=med_order))
     if meta["customers"] < 50:
-        w.append({"code": "few-customers", "severity": "medium", "message":
-                  f"Only {meta['customers']} customers — quantile-based segments "
-                  "are coarse below ~50; read them as rough groups."})
+        w.append(warn("few-customers", "medium", n=meta["customers"]))
     if ingest and ingest.get("rows_in"):
         bad = sum(v for k, v in ingest.get("dropped", {}).items()
                   if k in SUSPICIOUS_DROPS)
         if bad / ingest["rows_in"] > 0.2:
-            w.append({"code": "high-drop", "severity": "medium", "message":
-                      f"{round(100 * bad / ingest['rows_in'])} % of rows were "
-                      "dropped as unparseable — the column mapping or the "
-                      "decimal/date format is probably off for part of the file."})
+            w.append(warn("high-drop", "medium",
+                          p=round(100 * bad / ingest["rows_in"])))
     if ari is not None and ari < 0.15 and meta["customers"] >= 50:
-        w.append({"code": "weak-structure", "severity": "medium", "message":
-                  f"Rule-based segments and KMeans clusters barely agree "
-                  f"(ARI {ari:.2f}) — segment boundaries are uncertain. "
-                  "Often a symptom of a short or sparse history."})
+        w.append(warn("weak-structure", "medium", a=ari))
     return w
 
 
@@ -131,6 +165,25 @@ def _migration(out, feat, meta):
     return migration
 
 
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _contact_map(df) -> dict:
+    """Per-customer e-mail + name: mapped contact columns when the source has
+    them, otherwise the customer id itself when it is an e-mail address."""
+    ids = df["customer_id"].astype(str)
+    email, name = {}, {}
+    for col, target in (("customer_email", email), ("customer_name", name)):
+        if col in df.columns:
+            vals = df[col].astype(str)
+            keep = vals.str.strip().ne("")
+            target.update(dict(zip(ids[keep], vals[keep])))
+    for cid in ids.unique():
+        if cid not in email and _EMAIL_RE.match(cid):
+            email[cid] = cid
+    return {"email": email, "name": name}
+
+
 def analyze(df, currency="£", use_llm=True, out="out/result.json",
             lang=None, source_label=None):
     t0 = time.time()
@@ -146,7 +199,11 @@ def analyze(df, currency="£", use_llm=True, out="out/result.json",
     meta = summary(df)
     meta["currency"] = currency
     meta["source"] = source_label or "upload"
+    meta["language"] = lang        # the CONTENT language (cards, warnings) —
+                                   # the dashboard UI language is a separate,
+                                   # client-side toggle
 
+    contact = _contact_map(df)
     feat = rfm_segments(build_features(df))
     km_labels, sil, _ = kmeans_segments(feat)
     ari = agreement(feat["segment"], km_labels)
@@ -199,13 +256,18 @@ def analyze(df, currency="£", use_llm=True, out="out/result.json",
         },
         "quality": {
             "ingest": ingest,
-            "warnings": _quality(df, meta, ingest, sil, ari),
+            "warnings": _quality(df, meta, ingest, sil, ari, lang=lang),
         },
-        # per-customer rows for segment drill-down + CSV export in the UI
+        # per-customer rows for segment drill-down, CSV export and campaign
+        # launch. email/name come from mapped contact columns when present;
+        # else the id itself when it is an e-mail (the common CZ-shop case) —
+        # so launched mailings are directly consumable by a mailer.
         "customers": [
             {"id": str(r.customer_id), "segment": r.segment,
              "recency": int(r.recency), "frequency": int(r.frequency),
-             "monetary": round(float(r.monetary), 2)}
+             "monetary": round(float(r.monetary), 2),
+             "email": contact["email"].get(str(r.customer_id), ""),
+             "name": contact["name"].get(str(r.customer_id), "")}
             for r in feat.sort_values("monetary", ascending=False).itertuples()
         ],
         "runtime_secs": round(time.time() - t0, 1),

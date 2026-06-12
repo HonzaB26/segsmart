@@ -105,9 +105,11 @@ product never hard-depends on the LLM. Three hard lines: model output is
 untrusted (escaped in the UI, JSON extracted defensively), **numbers are
 never the model's** — response-rate assumptions and priority ranking are
 deterministic and printed on the card — and **commercial terms are never the
-model's**: prompts forbid invented voucher codes and `strip_voucher_codes`
-removes any that slip through (local models happily fabricate Czech-lettered
-codes no shop accepts).
+model's**: prompts forbid invented voucher codes AND concrete discount
+values; `strip_voucher_codes` scrubs codes that slip through, and a card
+that still promises a specific percentage/amount is replaced by clean
+rule-based copy (`has_invented_discount`). Discounts enter only through
+the owner's form.
 
 ## Campaign workflow: draft → discount → launch
 
@@ -116,10 +118,26 @@ The card the model drafts is copy, not commerce. The owner then optionally
 their own shop system) — `apply_discount` regenerates the copy around it (LLM
 rewrite with the code protected, deterministic template as fallback). **Launch**
 turns the approved card into a mailing artifact: subject, assembled body and
-the segment's recipient list, written to `out/mailings/` (never git-tracked)
+the segment's recipient list — each recipient with **e-mail and name** (from
+mapped contact columns, or the customer id itself when it is an e-mail), so a
+mailer can consume the file directly; the UI also offers the same list as an
+import-ready CSV. Written to `out/mailings/` (never git-tracked)
 and optionally POSTed to `config.mailer.webhook_url` — the seam where n8n,
 Zapier, or a ten-line SMTP script plugs in. SegSmart itself never sends
-anything; launch *is* the human gate.
+anything; launch *is* the human gate — and it is double-locked: the UI asks
+for a confirming second click (stating the recipient count and whether a live
+webhook will fire), and `/api/launch` refuses without `confirm: true`, so no
+single stray click can mail a whole segment.
+
+## Two languages, two knobs
+
+The **UI language** (dashboard/setup chrome, incl. Czech month and segment
+names and `cs-CZ` number formatting) is a client-side toggle in the header
+(persisted in localStorage, `?lang=cs` override). The **content language** —
+campaign copy and quality warnings — is set per run in /setup
+(`output.language`) and carried in `result.meta.language`. They are
+deliberately independent: a Czech owner may want an English UI over Czech
+campaigns, or vice versa.
 
 ## The quality layer — honesty as a feature
 

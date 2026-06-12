@@ -21,6 +21,9 @@ from seg.util import NoValidData
 
 CANON = ["customer_id", "order_id", "order_date",
          "quantity", "unit_price", "line_value", "product", "country"]
+# optional contact passthrough — kept when the source maps them, so campaign
+# launch can produce directly-mailable recipient lists (email + name)
+CONTACT = ["customer_email", "customer_name"]
 
 
 def _guess_dayfirst(txt: pd.Series) -> bool:
@@ -128,7 +131,10 @@ def _finalize(df: pd.DataFrame, drop_cancellations=True, drop_nonpositive=True) 
         df["country"] = ""
     df["product"] = df["product"].astype(str)
     df["country"] = df["country"].astype(str)
-    out = df[CANON].reset_index(drop=True)
+    extra = [c for c in CONTACT if c in df.columns]
+    for c in extra:
+        df[c] = df[c].astype(str).replace("nan", "")
+    out = df[CANON + extra].reset_index(drop=True)
     # ingest report — the pipeline reads it right after loading and shows it
     # on the dashboard, so silently-dropped rows are never silent
     out.attrs["ingest"] = {"rows_in": int(rows_in), "rows_kept": int(len(out)),
@@ -153,6 +159,7 @@ DEFAULT_MAP = {
     "customer_id": "customer_id", "order_id": "order_id", "order_date": "order_date",
     "quantity": "quantity", "unit_price": "unit_price", "line_value": "line_value",
     "product": "product", "country": "country",
+    "customer_email": "customer_email", "customer_name": "customer_name",
 }
 
 

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -115,9 +115,10 @@
 <div class="wrap">
   <header>
     <div class="logo">Seg<span>Smart</span></div>
-    <div class="sub">customer segmentation that never leaves your laptop</div>
-    <div class="badge">🔒 Data stays on this machine</div>
-    <a class="nav" href="/setup">⚙ Data setup</a>
+    <div class="sub" data-i="tagline">customer segmentation that never leaves your laptop</div>
+    <div class="badge" data-i="badge">🔒 Data stays on this machine</div>
+    <a class="nav" href="/setup" data-i="nav_setup">⚙ Data setup</a>
+    <a class="nav" href="#" id="langtoggle" title="UI language">🌐 CZ</a>
   </header>
   <div class="meta" id="meta">loading…</div>
 
@@ -126,35 +127,35 @@
   <div class="insight" id="insight" style="display:none"></div>
   <div id="warnings"></div>
   <div class="card" id="migcard" style="display:none;margin-top:16px">
-    <h3>Since last run <span class="sub" id="migsub"></span></h3>
+    <h3><span data-i="since_last">Since last run</span> <span class="sub" id="migsub"></span></h3>
     <div class="mig" id="mig"></div>
   </div>
 
   <div class="grid two" style="margin-top:16px">
     <div class="card">
-      <h3>Customer segments</h3>
+      <h3 data-i="h_segments">Customer segments</h3>
       <div class="donutrow">
         <svg id="donut" width="200" height="200" viewBox="0 0 200 200"></svg>
         <div class="legend" id="legend"></div>
       </div>
     </div>
     <div class="card">
-      <h3>Revenue by segment</h3>
+      <h3 data-i="h_revenue">Revenue by segment</h3>
       <div class="bars" id="bars"></div>
     </div>
   </div>
 
   <div class="grid two" style="margin-top:16px">
     <div class="card">
-      <h3>AI campaign suggestions <span class="sub" id="llmtag"></span></h3>
+      <h3><span data-i="h_campaigns">AI campaign suggestions</span> <span class="sub" id="llmtag"></span></h3>
       <div class="camps" id="camps"></div>
     </div>
     <div class="card">
-      <h3>Seasonality <span class="sub" id="seasontag"></span></h3>
+      <h3><span data-i="h_season">Seasonality</span> <span class="sub" id="seasontag"></span></h3>
       <div class="season" id="season"></div>
       <div class="hint" id="seasonhint"></div>
 
-      <h3 style="margin-top:20px">Validation</h3>
+      <h3 style="margin-top:20px" data-i="h_validation">Validation</h3>
       <div class="valrow" id="validation"></div>
       <div class="hint" id="ingest"></div>
     </div>
@@ -163,16 +164,16 @@
   <div class="card drill" id="drillcard" style="display:none;margin-top:16px">
     <h3 id="drilltitle"></h3>
     <div class="controls">
-      <button id="drillcsv">Export segment CSV</button>
-      <button class="ghost" id="drillall">Export all customers</button>
-      <button class="ghost" id="drillclose">Close</button>
+      <button id="drillcsv" data-i="b_export_seg">Export segment CSV</button>
+      <button class="ghost" id="drillall" data-i="b_export_all">Export all customers</button>
+      <button class="ghost" id="drillclose" data-i="b_close">Close</button>
       <span class="hint" id="drillnote"></span>
     </div>
     <div id="drilltable"></div>
   </div>
 
-  <div class="foot">SegSmart · MBA Project 2026 · runs fully offline · RFM + KMeans + on-device LLM
-    · <a href="/setup" style="color:#7c79b8">data setup</a></div>
+  <div class="foot"><span data-i="footer">SegSmart · MBA Project 2026 · runs fully offline · RFM + KMeans + on-device LLM</span>
+    · <a href="/setup" style="color:#7c79b8" data-i="f_setup">data setup</a></div>
 </div>
 
 <div class="modal" id="campModal" role="dialog" aria-modal="true" aria-labelledby="cmSeg">
@@ -190,23 +191,167 @@ const fmtMoney = (n, c) => c === 'Kč'
   ? new Intl.NumberFormat('cs-CZ',{maximumFractionDigits:0}).format(n) + ' Kč'
   : c + new Intl.NumberFormat('en-GB',{maximumFractionDigits:0}).format(n);
 
-let CURRENT=null;
+// ---- UI language (chrome only — campaign/warning CONTENT language is set
+// per run in /setup and carried in result.meta.language) ----
+const UI = {
+en:{
+  tagline:'customer segmentation that never leaves your laptop',
+  badge:'🔒 Data stays on this machine', nav_setup:'⚙ Data setup',
+  h_segments:'Customer segments', h_revenue:'Revenue by segment',
+  h_campaigns:'AI campaign suggestions', h_season:'Seasonality',
+  h_validation:'Validation', since_last:'Since last run',
+  b_export_seg:'Export segment CSV', b_export_all:'Export all customers', b_close:'Close',
+  footer:'SegSmart · MBA Project 2026 · runs fully offline · RFM + KMeans + on-device LLM',
+  f_setup:'data setup',
+  meta:'{tx} transactions · {cu} customers · {or} orders · {from} → {to} · {co} countries · computed in {s}s',
+  meta_source:'source',
+  kpi_total:'Total customers', kpi_total_n:'active in window',
+  kpi_repeat:'Repeat rate', kpi_repeat_n:'buy more than once',
+  kpi_aov:'Avg order value', kpi_aov_n:'across all orders',
+  kpi_ai:'AI campaigns', kpi_ai_n:'ready to launch',
+  insight:'<b>{a}%</b> of customers ({seg}) drive <b>{b}%</b> of revenue',
+  insight_dorm:' · <b>{a}%</b> are {seg} — on average {m} months since their last order',
+  seg_word:'segments', legend_tip:'click for customer list',
+  ingest:'Ingest: kept <b>{k}</b> of {n} rows', ingest_drop:'dropped',
+  ingest_none:'nothing dropped',
+  mig_vs:'· vs {d}', mig_new:'＋ {n} new customers', mig_left:'－ {n} no longer in window',
+  season_hint:'Peak: <b>{p}</b> (+{u}% vs average) · low: {l}. Plan inventory and campaigns around {pg}.',
+  season_tag:'· indexed to 100 = average month',
+  months:{}, months_nom:{}, months_gen:{}, segnames:{},
+  val_sil:'KMeans silhouette', val_sil_s:'cluster separation',
+  val_ari:'RFM ↔ KMeans (ARI)', val_ari_s:'rules vs geometry agreement',
+  val_n:'customers segmented', val_n_s:'full base',
+  llm_rule:'· rule-based', llm_dev:'(on-device)',
+  est:'≈ {n} responders → {m} (@{p}% response)',
+  b_disc:'💰 Add discount', b_launch:'🚀 Launch', b_regen:'Regenerate copy ▸',
+  opt_pct:'% off', opt_amt:'amount off', opt_ship:'free shipping',
+  ph_code:'code, e.g. SPRING15',
+  need_value:'enter the discount value', need_code:'enter the code from your shop system',
+  regenerating:'regenerating…', launching:'launching…',
+  recipients:'recipients', with_email:'with e-mail', download:'download',
+  confirm_launch:'⚠ Send to {n} recipients{hook}? Click 🚀 again to confirm',
+  hook_live:' — your mailer webhook WILL be called', hook_file:' (saves a file, no mailer configured)',
+  drill_title:'{s} — {n} customers',
+  drill_note:'showing top 50 by spend; the CSV has all {n}',
+  dt_cust:'customer', dt_days:'days since last order', dt_orders:'orders', dt_spent:'total spent',
+  empty:'No result yet — <a href="/setup" style="color:var(--teal)">set up your data source</a> to get started.',
+  more:'details →', m_campaign:'Campaign', m_channel:'Channel', m_offer:'Offer',
+  m_rationale:'Rationale', m_impact:'Projected impact',
+  m_impact_note:'est. incremental revenue from ≈ {n} responders',
+  m_formula:'{c} customers × {r}% response', m_aov:'avg order',
+  m_context:'Segment context', m_customers:'Customers', m_revshare:'Revenue share',
+  m_recency:'Avg recency', m_days:'{d} days since last order',
+  m_orders:'Avg orders', m_spend:'Avg spend',
+  m_note_rule:'Copy generated by a rule-based template (LLM offline).',
+  m_note_llm:'Copy generated by {s} on-device.',
+  m_note_det:'Impact numbers are computed deterministically — never produced by the model.',
+  m_note_pri:'Model suggested priority: {p}; shown priority is ranked by revenue opportunity.',
+  reasons:{},
+},
+cs:{
+  tagline:'segmentace zákazníků, která neopustí váš počítač',
+  badge:'🔒 Data zůstávají na tomto počítači', nav_setup:'⚙ Nastavení dat',
+  h_segments:'Zákaznické segmenty', h_revenue:'Tržby podle segmentu',
+  h_campaigns:'Návrhy AI kampaní', h_season:'Sezónnost',
+  h_validation:'Validace', since_last:'Od minulého běhu',
+  b_export_seg:'Export segmentu (CSV)', b_export_all:'Export všech zákazníků', b_close:'Zavřít',
+  footer:'SegSmart · MBA projekt 2026 · běží zcela offline · RFM + KMeans + lokální LLM',
+  f_setup:'nastavení dat',
+  meta:'{tx} transakcí · {cu} zákazníků · {or} objednávek · {from} → {to} · {co} zemí · spočteno za {s} s',
+  meta_source:'zdroj',
+  kpi_total:'Zákazníků celkem', kpi_total_n:'aktivních ve sledovaném období',
+  kpi_repeat:'Opakované nákupy', kpi_repeat_n:'nakoupí víc než jednou',
+  kpi_aov:'Průměrná objednávka', kpi_aov_n:'napříč všemi objednávkami',
+  kpi_ai:'AI kampaně', kpi_ai_n:'připravené ke spuštění',
+  insight:'<b>{a} %</b> zákazníků ({seg}) přináší <b>{b} %</b> tržeb',
+  insight_dorm:' · <b>{a} %</b> je spících – v průměru {m} měsíců od posledního nákupu',
+  seg_word:'segmentů', legend_tip:'kliknutím zobrazíte zákazníky',
+  ingest:'Načteno: zachováno <b>{k}</b> z {n} řádků', ingest_drop:'vyřazeno',
+  ingest_none:'nic nevyřazeno',
+  mig_vs:'· proti běhu {d}', mig_new:'＋ {n} nových zákazníků', mig_left:'－ {n} mimo sledované období',
+  season_hint:'Vrchol: <b>{p}</b> (+{u} % proti průměru) · minimum: {l}. Zásoby a kampaně plánujte kolem {pg}.',
+  season_tag:'· index 100 = průměrný měsíc',
+  months:{Jan:'led',Feb:'úno',Mar:'bře',Apr:'dub',May:'kvě',Jun:'čvn',
+          Jul:'čvc',Aug:'srp',Sep:'zář',Oct:'říj',Nov:'lis',Dec:'pro'},
+  months_nom:{Jan:'leden',Feb:'únor',Mar:'březen',Apr:'duben',May:'květen',Jun:'červen',
+              Jul:'červenec',Aug:'srpen',Sep:'září',Oct:'říjen',Nov:'listopad',Dec:'prosinec'},
+  months_gen:{Jan:'ledna',Feb:'února',Mar:'března',Apr:'dubna',May:'května',Jun:'června',
+              Jul:'července',Aug:'srpna',Sep:'září',Oct:'října',Nov:'listopadu',Dec:'prosince'},
+  segnames:{Champions:'Šampioni',Loyal:'Věrní','At-risk':'Ohrožení',New:'Noví',Dormant:'Spící'},
+  val_sil:'Silueta KMeans', val_sil_s:'oddělení shluků',
+  val_ari:'RFM ↔ KMeans (ARI)', val_ari_s:'shoda pravidel s geometrií',
+  val_n:'segmentovaných zákazníků', val_n_s:'celá báze',
+  llm_rule:'· pravidlový fallback', llm_dev:'(lokálně)',
+  est:'≈ {n} reakcí → {m} (při {p}% odezvě)',
+  b_disc:'💰 Přidat slevu', b_launch:'🚀 Spustit', b_regen:'Přegenerovat text ▸',
+  opt_pct:'% sleva', opt_amt:'pevná částka', opt_ship:'doprava zdarma',
+  ph_code:'kód, např. JARO15',
+  need_value:'zadejte výši slevy', need_code:'zadejte kód z vašeho e-shopu',
+  regenerating:'přegenerovávám…', launching:'spouštím…',
+  recipients:'příjemců', with_email:'s e-mailem', download:'stáhnout',
+  confirm_launch:'⚠ Odeslat {n} příjemcům{hook}? Potvrďte dalším kliknutím na 🚀',
+  hook_live:' – zavolá se váš mailer webhook', hook_file:' (jen uloží soubor, mailer není nastaven)',
+  drill_title:'{s} – {n} zákazníků',
+  drill_note:'zobrazeno top 50 podle útraty; CSV obsahuje všech {n}',
+  dt_cust:'zákazník', dt_days:'dní od posledního nákupu', dt_orders:'objednávek', dt_spent:'celkem utraceno',
+  empty:'Zatím žádný výsledek – začněte <a href="/setup" style="color:var(--teal)">nastavením zdroje dat</a>.',
+  more:'detail →', m_campaign:'Kampaň', m_channel:'Kanál', m_offer:'Nabídka',
+  m_rationale:'Zdůvodnění', m_impact:'Odhadovaný dopad',
+  m_impact_note:'odhad dodatečných tržeb od ≈ {n} reagujících',
+  m_formula:'{c} zákazníků × {r}% odezva', m_aov:'prům. objednávka',
+  m_context:'Kontext segmentu', m_customers:'Zákazníků', m_revshare:'Podíl na tržbách',
+  m_recency:'Prům. doba od nákupu', m_days:'{d} dní od posledního nákupu',
+  m_orders:'Prům. počet objednávek', m_spend:'Prům. útrata',
+  m_note_rule:'Text vytvořila pravidlová šablona (LLM nedostupný).',
+  m_note_llm:'Text vytvořil model {s} lokálně.',
+  m_note_det:'Čísla dopadu jsou spočtena deterministicky – nikdy je negeneruje model.',
+  m_note_pri:'Model navrhoval prioritu {p}; zobrazená priorita je seřazena podle příležitosti v tržbách.',
+  reasons:{'unparseable date':'nečitelné datum','unparseable price':'nečitelná cena',
+    'missing customer id':'chybí ID zákazníka','cancellations / returns':'storna / vratky',
+    'non-positive price':'nekladná cena','billing / shipping lines':'řádky platby / dopravy',
+    'cancelled / returned / failed':'stornované / vrácené / nezaplacené',
+    'missing customer / date / value':'chybí zákazník / datum / hodnota'},
+},
+};
+let uiLang = new URLSearchParams(location.search).get('lang')
+  || localStorage.getItem('seg_ui_lang')
+  || (((navigator.language||'').toLowerCase().startsWith('cs'))?'cs':'en');
+if(!UI[uiLang]) uiLang='en';
+const t = k => (UI[uiLang][k] ?? UI.en[k] ?? k);
+const tf = (k, vars) => Object.entries(vars).reduce(
+  (s,[a,b])=>s.replaceAll('{'+a+'}', b), t(k));
+const reason = k => (UI[uiLang].reasons||{})[k] || k;
+// data values translated for DISPLAY only (exports keep canonical names)
+const segName = s => (UI[uiLang].segnames||{})[s] || s;
+const mShort = m => (UI[uiLang].months||{})[m] || m;
+const mNom = m => (UI[uiLang].months_nom||{})[m] || m;
+const mGen = m => (UI[uiLang].months_gen||{})[m] || m;
+const LOC = () => uiLang==='cs'?'cs-CZ':'en-GB';
+const fmtNum = n => Number(n).toLocaleString(LOC());
+const fmtDec = n => n==null ? 'n/a' : Number(n).toLocaleString(LOC());
+
+function applyLang(){
+  document.querySelectorAll('[data-i]').forEach(el=>{ el.innerHTML = t(el.dataset.i); });
+  $('#langtoggle').textContent = uiLang==='cs' ? '🌐 EN' : '🌐 CZ';
+  document.documentElement.lang = uiLang;
+  if(CUR) render(CUR); else if($('#meta').dataset.empty) $('#meta').innerHTML = t('empty');
+}
+
+
 function render(r){
-  CURRENT=r;
   const c = r.meta.currency || '£';
-  $('#meta').textContent =
-    `${r.meta.rows.toLocaleString()} transactions · ${r.meta.customers.toLocaleString()} customers · `
-    + `${r.meta.orders.toLocaleString()} orders · ${r.meta.date_from} → ${r.meta.date_to} · `
-    + `${r.meta.countries} countries · computed in ${r.runtime_secs}s`
-    + (r.meta.source ? ` · source: ${r.meta.source}` : '');
+  $('#meta').textContent = tf('meta', {tx:fmtNum(r.meta.rows),
+      cu:fmtNum(r.meta.customers), or:fmtNum(r.meta.orders),
+      from:r.meta.date_from, to:r.meta.date_to, co:r.meta.countries, s:r.runtime_secs})
+    + (r.meta.source ? ` · ${t('meta_source')}: ${r.meta.source}` : '');
 
   // KPIs
   const k = r.kpis;
   $('#kpis').innerHTML = [
-    ['Total customers', k.total_customers.toLocaleString(), 'active in window'],
-    ['Repeat rate', k.repeat_rate_pct + '%', 'buy more than once'],
-    ['Avg order value', fmtMoney(k.avg_order_value,c), 'across all orders'],
-    ['AI campaigns', k.ai_campaigns, 'ready to launch'],
+    [t('kpi_total'), fmtNum(k.total_customers), t('kpi_total_n')],
+    [t('kpi_repeat'), fmtDec(k.repeat_rate_pct) + ' %', t('kpi_repeat_n')],
+    [t('kpi_aov'), fmtMoney(k.avg_order_value,c), t('kpi_aov_n')],
+    [t('kpi_ai'), k.ai_campaigns, t('kpi_ai_n')],
   ].map(([l,v,n])=>`<div class="card kpi"><div class="lbl">${l}</div><div class="val">${v}</div><div class="note">${n}</div></div>`).join('');
 
   // headline insight
@@ -214,9 +359,10 @@ function render(r){
   const dorm = r.segments.find(s=>s.name==='Dormant');
   if(champ){
     $('#insight').style.display='block';
-    $('#insight').innerHTML = `<b>${champ.share_pct}%</b> of customers (Champions) drive `
-      + `<b>${champ.rev_share_pct}%</b> of revenue`
-      + (dorm?` · <b>${dorm.share_pct}%</b> are Dormant — silent for ~${Math.round(dorm.avg_recency)} days`:'');
+    $('#insight').innerHTML = tf('insight', {a:fmtDec(champ.share_pct),
+        b:fmtDec(champ.rev_share_pct), seg:segName('Champions')})
+      + (dorm?tf('insight_dorm', {a:fmtDec(dorm.share_pct), seg:segName('Dormant'),
+        m:Math.max(1, Math.round(dorm.avg_recency/30))}):'');
   }
 
   // donut
@@ -231,9 +377,9 @@ function render(r){
   });
   $('#donut').innerHTML = arcs +
     `<text x="${CX}" y="${CY-4}" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">${segs.length}</text>`+
-    `<text x="${CX}" y="${CY+16}" text-anchor="middle" font-size="11" fill="#a9a7d4">segments</text>`;
+    `<text x="${CX}" y="${CY+16}" text-anchor="middle" font-size="11" fill="#a9a7d4">${t('seg_word')}</text>`;
   $('#legend').innerHTML = segs.map(s=>
-    `<div data-seg="${esc(s.name)}" title="click for customer list"><span class="dot" style="background:${s.color}"></span>${esc(s.name)}<span class="pc">${s.share_pct}%</span></div>`).join('');
+    `<div data-seg="${esc(s.name)}" title="${t('legend_tip')}"><span class="dot" style="background:${s.color}"></span>${esc(segName(s.name))}<span class="pc">${fmtDec(s.share_pct)} %</span></div>`).join('');
   document.querySelectorAll('#legend div').forEach(el=>el.onclick=()=>drill(r, el.dataset.seg));
 
   // honesty warnings (the tool says when the data can't support conclusions)
@@ -244,21 +390,21 @@ function render(r){
   // ingest report
   const ing=(r.quality||{}).ingest;
   $('#ingest').innerHTML = !ing ? '' :
-    `Ingest: kept <b>${ing.rows_kept.toLocaleString()}</b> of ${ing.rows_in.toLocaleString()} rows`
+    tf('ingest', {k:fmtNum(ing.rows_kept), n:fmtNum(ing.rows_in)})
     + (Object.keys(ing.dropped||{}).length
-       ? ' · dropped: ' + Object.entries(ing.dropped).map(([k,v])=>`${esc(k)} ${v.toLocaleString()}`).join(', ')
-       : ' · nothing dropped');
+       ? ` · ${t('ingest_drop')}: ` + Object.entries(ing.dropped).map(([k,v])=>`${esc(reason(k))} ${fmtNum(v)}`).join(', ')
+       : ` · ${t('ingest_none')}`);
 
   // segment migration since the previous persisted run
   const mig=r.migration;
   if(mig && (mig.moves.length || mig.entered || mig.left)){
     $('#migcard').style.display='block';
-    $('#migsub').textContent='· vs '+mig.prev_run;
-    const arrow=m=>`<span><b style="color:${(segs.find(s=>s.name===m.from)||{}).color||'#888'}">${esc(m.from)}</b>`
-      +` → <b style="color:${(segs.find(s=>s.name===m.to)||{}).color||'#888'}">${esc(m.to)}</b>: ${m.customers}</span>`;
+    $('#migsub').textContent=tf('mig_vs', {d:mig.prev_run});
+    const arrow=m=>`<span><b style="color:${(segs.find(s=>s.name===m.from)||{}).color||'#888'}">${esc(segName(m.from))}</b>`
+      +` → <b style="color:${(segs.find(s=>s.name===m.to)||{}).color||'#888'}">${esc(segName(m.to))}</b>: ${m.customers}</span>`;
     $('#mig').innerHTML = mig.moves.slice(0,8).map(arrow).join('')
-      + (mig.entered?`<span>＋ ${mig.entered} new customers</span>`:'')
-      + (mig.left?`<span>－ ${mig.left} no longer in window</span>`:'');
+      + (mig.entered?`<span>${tf('mig_new',{n:mig.entered})}</span>`:'')
+      + (mig.left?`<span>${tf('mig_left',{n:mig.left})}</span>`:'');
   } else { $('#migcard').style.display='none'; }
 
   // revenue bars
@@ -267,7 +413,7 @@ function render(r){
     const h = Math.max(3, s.revenue/maxRev*140);
     return `<div class="bar"><div class="amt" style="color:${s.color}">${fmtMoney(s.revenue,c)}</div>`
       + `<div class="col" style="height:${h}px;background:${s.color}"></div>`
-      + `<div class="cap">${esc(s.name)}</div></div>`;
+      + `<div class="cap">${esc(segName(s.name))}</div></div>`;
   }).join('');
 
   renderCampaigns(r);
@@ -278,62 +424,67 @@ function render(r){
   $('#season').innerHTML = si.map(m=>{
     const peak = m.month===hook.peak_month;
     return `<div class="mcol ${peak?'peak':''}"><div class="mb" style="height:${m.index/maxI*100}px"></div>`
-      + `<div class="ml">${m.month}</div></div>`;
+      + `<div class="ml">${mShort(m.month)}</div></div>`;
   }).join('');
-  $('#seasonhint').innerHTML = `Peak: <b>${hook.peak_month}</b> (+${hook.peak_uplift_pct}% vs average) · `
-    + `low: ${hook.low_month}. Plan inventory & the winter push around ${hook.peak_month}.`;
-  $('#seasontag').textContent = '· indexed to 100 = average month';
+  $('#seasonhint').innerHTML = tf('season_hint',
+    {p:mNom(hook.peak_month), pg:mGen(hook.peak_month),
+     u:fmtDec(hook.peak_uplift_pct), l:mNom(hook.low_month)});
+  $('#seasontag').textContent = t('season_tag');
 
   // validation
   const v=r.validation;
   $('#validation').innerHTML = [
-    [v.kmeans_silhouette==null?'n/a':v.kmeans_silhouette, 'KMeans silhouette', 'cluster separation'],
-    [v.rfm_kmeans_ari, 'RFM ↔ KMeans (ARI)', 'rules vs geometry agreement'],
-    [v.n_customers.toLocaleString(), 'customers segmented', 'full base'],
+    [fmtDec(v.kmeans_silhouette), t('val_sil'), t('val_sil_s')],
+    [fmtDec(v.rfm_kmeans_ari), t('val_ari'), t('val_ari_s')],
+    [fmtNum(v.n_customers), t('val_n'), t('val_n_s')],
   ].map(([b,l,s])=>`<div class="val"><b>${b}</b><small>${l}</small><small>${s}</small></div>`).join('');
 }
 
 // campaign cards: render + owner-discount workflow + launch
 let CUR=null;   // last rendered result (campaign/launch handlers need it)
+let MAILER_ON=false;          // is a mailer webhook configured? (confirm wording)
+const LAUNCH_ARMED={};        // card index -> timestamp of first launch click
+fetch('/api/config').then(r=>r.json()).then(d=>{
+  MAILER_ON=!!(((d.config||{}).mailer||{}).webhook_url);
+}).catch(()=>{});
 function renderCampaigns(r){
   CUR=r;
   const c = r.meta.currency||'£';
-  const lang = c==='Kč'?'cs':'en';
   $('#camps').innerHTML = r.campaigns.map((cp,i)=>{
     const e=cp.estimate;
     const pri = ['high','medium','low'].includes(cp.priority)?cp.priority:'medium';
     const d=cp.discount;
     return `<div class="camp" data-idx="${i}" tabindex="0" style="border-left-color:${(r.segments.find(s=>s.name===cp.segment)||{}).color||'#888'}">
-      <div class="top"><span class="seg">${esc(cp.segment)}</span>
+      <div class="top"><span class="seg">${esc(segName(cp.segment))}</span>
         <span class="pri ${pri}">${esc(pri)}</span></div>
-      <span class="more">details →</span>
+      <span class="more">${t('more')}</span>
       <div class="head">“${esc(cp.headline)}”</div>
       <div class="det">${esc(cp.channel)} · ${esc(cp.offer)}</div>
       <div class="det" style="margin-top:3px">${esc(cp.rationale||'')}</div>
-      <div class="est">≈ ${e.expected_responders} responders → ${fmtMoney(e.est_incremental_revenue,c)} `
-      + `(@${Math.round(e.assumed_response_rate*100)}% response)</div>
+      <div class="est">${tf('est', {n:e.expected_responders,
+        m:fmtMoney(e.est_incremental_revenue,c), p:Math.round(e.assumed_response_rate*100)})}</div>
       ${d&&d.code?`<div class="det" style="margin-top:3px">🎟 ${esc(d.code)}</div>`:''}
       <div class="controls" style="margin-top:9px">
-        <button class="ghost" style="padding:5px 10px;font-size:12px" data-act="disc" data-i="${i}">💰 ${lang==='cs'?'Přidat slevu':'Add discount'}</button>
-        <button style="padding:5px 10px;font-size:12px" data-act="launch" data-i="${i}">🚀 Launch</button>
+        <button class="ghost" style="padding:5px 10px;font-size:12px" data-act="disc" data-i="${i}">${t('b_disc')}</button>
+        <button style="padding:5px 10px;font-size:12px" data-act="launch" data-i="${i}">${t('b_launch')}</button>
         <span class="hint" data-status="${i}" style="margin:0"></span>
       </div>
       <div data-form="${i}" style="display:none;margin-top:8px">
         <div class="controls" style="margin-top:0">
           <select data-f="kind">
-            <option value="percent">${lang==='cs'?'% sleva':'% off'}</option>
-            <option value="amount">${lang==='cs'?'částka':'amount off'}</option>
-            <option value="free_shipping">${lang==='cs'?'doprava zdarma':'free shipping'}</option>
+            <option value="percent">${t('opt_pct')}</option>
+            <option value="amount">${t('opt_amt')}</option>
+            <option value="free_shipping">${t('opt_ship')}</option>
           </select>
           <input data-f="value" type="number" min="1" placeholder="15" style="width:64px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px">
-          <input data-f="code" placeholder="${lang==='cs'?'kód, např. JARO15':'code, e.g. SPRING15'}" style="width:140px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px">
-          <button class="ghost" style="padding:5px 10px;font-size:12px" data-act="regen" data-i="${i}">${lang==='cs'?'Přegenerovat text ▸':'Regenerate copy ▸'}</button>
+          <input data-f="code" placeholder="${t('ph_code')}" style="width:140px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px">
+          <button class="ghost" style="padding:5px 10px;font-size:12px" data-act="regen" data-i="${i}">${t('b_regen')}</button>
         </div>
       </div>
       <span class="src">${esc(cp._source)}</span></div>`;
   }).join('');
   const llmName = (r.campaigns[0]||{})._source||'';
-  $('#llmtag').textContent = llmName.includes('fallback')?'· rule-based':'· '+llmName+' (on-device)';
+  $('#llmtag').textContent = llmName.includes('fallback')?t('llm_rule'):'· '+llmName+' '+t('llm_dev');
 
   document.querySelectorAll('#camps [data-act]').forEach(b=>b.onclick=()=>cardAction(b.dataset.act,+b.dataset.i));
   document.querySelectorAll('#camps .camp').forEach(el=>{ const open=()=>openCamp(+el.dataset.idx); el.onclick=ev=>{ if(ev.target.closest('button,select,input')) return; open(); }; el.onkeydown=ev=>{ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); open(); } }; });
@@ -342,16 +493,17 @@ function renderCampaigns(r){
 async function cardAction(act, i){
   const cp=CUR.campaigns[i];
   const cur=CUR.meta.currency||'£';
-  const lang=cur==='Kč'?'cs':'en';
+  // CONTENT language: what the cards are written in (set per run in /setup)
+  const lang=CUR.meta.language||(cur==='Kč'?'cs':'en');
   const st=document.querySelector(`[data-status="${i}"]`);
   const form=document.querySelector(`[data-form="${i}"]`);
   if(act==='disc'){ form.style.display=form.style.display==='none'?'block':'none'; return; }
   if(act==='regen'){
     const get=f=>form.querySelector(`[data-f="${f}"]`).value;
     const discount={kind:get('kind'), value:+get('value')||null, code:get('code').trim()};
-    if(discount.kind!=='free_shipping' && !discount.value){ st.textContent=lang==='cs'?'zadejte výši slevy':'enter the discount value'; return; }
-    if(!discount.code){ st.textContent=lang==='cs'?'zadejte kód z vašeho e-shopu':'enter the code from your shop system'; return; }
-    st.textContent=lang==='cs'?'přegenerovávám…':'regenerating…';
+    if(discount.kind!=='free_shipping' && !discount.value){ st.textContent=t('need_value'); return; }
+    if(!discount.code){ st.textContent=t('need_code'); return; }
+    st.textContent=t('regenerating');
     try{
       const r=await fetch('/api/refine_card',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({card:cp, discount, language:lang, currency:cur, use_llm:true})});
@@ -362,35 +514,58 @@ async function cardAction(act, i){
     return;
   }
   if(act==='launch'){
-    const recipients=(CUR.customers||[]).filter(x=>x.segment===cp.segment).map(x=>({id:x.id}));
-    st.textContent=lang==='cs'?'spouštím…':'launching…';
+    const recipients=(CUR.customers||[]).filter(x=>x.segment===cp.segment)
+      .map(x=>({id:x.id, email:x.email||'', name:x.name||''}));
+    // two-click confirmation: a single stray click must never mail a segment
+    if(!LAUNCH_ARMED[i] || Date.now()-LAUNCH_ARMED[i] > 8000){
+      LAUNCH_ARMED[i]=Date.now();
+      st.textContent=tf('confirm_launch', {n:recipients.length,
+        hook:MAILER_ON?t('hook_live'):t('hook_file')});
+      setTimeout(()=>{ if(LAUNCH_ARMED[i] && Date.now()-LAUNCH_ARMED[i]>=8000){
+        delete LAUNCH_ARMED[i]; if(st.textContent.startsWith('⚠')) st.textContent=''; }}, 8200);
+      return;
+    }
+    delete LAUNCH_ARMED[i];
+    st.textContent=t('launching');
     try{
       const r=await fetch('/api/launch',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({card:cp, recipients, language:lang, currency:cur})});
+        body:JSON.stringify({card:cp, recipients, language:lang, currency:cur, confirm:true})});
       const j=await r.json();
       if(j.error){ st.textContent='error: '+j.error; return; }
-      const dl=document.createElement('a');
-      dl.href=URL.createObjectURL(new Blob([JSON.stringify(j.mailing,null,2)],{type:'application/json'}));
-      dl.download=j.saved.split('/').pop(); dl.textContent=lang==='cs'?'stáhnout':'download';
-      dl.style.color='var(--teal)';
-      st.innerHTML=`✓ ${j.recipients} ${lang==='cs'?'příjemců':'recipients'} → ${esc(j.saved)} · `
+      const mk=(text, blobText, fname, type)=>{
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(new Blob([blobText],{type}));
+        a.download=fname; a.textContent=text; a.style.color='var(--teal)'; a.style.marginRight='8px';
+        return a;
+      };
+      const base=j.saved.split('/').pop().replace(/\.json$/,'');
+      st.innerHTML=`✓ ${j.recipients} ${t('recipients')}`
+        + (j.deliverable!=null?` (${j.deliverable} ${t('with_email')})`:'')
+        + ` → ${esc(j.saved)} · `
         + (j.delivery.delivered?'webhook ✓':esc(j.delivery.note||j.delivery.error||''))+' · ';
-      st.appendChild(dl);
+      st.appendChild(mk('JSON', JSON.stringify(j.mailing,null,2), base+'.json', 'application/json'));
+      // a recipients CSV any mailer can import directly: email, name, subject
+      const m=j.mailing;
+      const csv='email,name,customer_id,subject\n'+m.recipients.map(x=>
+        [x.email||'', x.name||'', x.customer_id, m.subject].map(qcsv).join(',')).join('\n');
+      st.appendChild(mk('CSV', csv, base+'-recipients.csv', 'text/csv'));
     }catch(e){ st.textContent='error: '+e; }
   }
 }
 
+// formula-injection guard: a customer id like "=HYPERLINK(...)" must not
+// execute when the export is opened in a spreadsheet
+function qcsv(v){
+  let s=String(v==null?'':v);
+  if(/^[=+\-@\t\r]/.test(s)) s="'"+s;
+  return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+
 // segment drill-down: who exactly is in this segment + CSV export
 function toCsv(rows){
-  const head='customer_id,segment,recency_days,orders,total_spent';
-  // formula-injection guard: a customer id like "=HYPERLINK(...)" must not
-  // execute when the export is opened in a spreadsheet
-  const q=v=>{
-    let s=String(v);
-    if(/^[=+\-@\t\r]/.test(s)) s="'"+s;
-    return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
-  };
-  return head+'\n'+rows.map(c=>[q(c.id),q(c.segment),c.recency,c.frequency,c.monetary].join(',')).join('\n');
+  const head='customer_id,email,name,segment,recency_days,orders,total_spent';
+  return head+'\n'+rows.map(c=>[qcsv(c.id),qcsv(c.email||''),qcsv(c.name||''),
+    qcsv(c.segment),c.recency,c.frequency,c.monetary].join(',')).join('\n');
 }
 function download(name, text){
   const a=document.createElement('a');
@@ -402,10 +577,10 @@ function drill(r, seg){
   const rows=all.filter(c=>c.segment===seg);
   const cur=r.meta.currency||'£';
   $('#drillcard').style.display='block';
-  $('#drilltitle').textContent=`${seg} — ${rows.length} customers`;
-  $('#drillnote').textContent=rows.length>50?`showing top 50 by spend; the CSV has all ${rows.length}`:'';
-  $('#drilltable').innerHTML='<table><thead><tr><th>customer</th><th>days since last order</th><th>orders</th><th>total spent</th></tr></thead><tbody>'
-    + rows.slice(0,50).map(c=>`<tr><td>${esc(c.id)}</td><td>${c.recency}</td><td>${c.frequency}</td><td>${fmtMoney(c.monetary,cur)}</td></tr>`).join('')
+  $('#drilltitle').textContent=tf('drill_title',{s:segName(seg), n:rows.length});
+  $('#drillnote').textContent=rows.length>50?tf('drill_note',{n:rows.length}):'';
+  $('#drilltable').innerHTML=`<table><thead><tr><th>${t('dt_cust')}</th><th>${t('dt_days')}</th><th>${t('dt_orders')}</th><th>${t('dt_spent')}</th></tr></thead><tbody>`
+    + rows.slice(0,50).map(c=>`<tr><td>${esc(c.id)}${c.email&&c.email!==c.id?` · ${esc(c.email)}`:''}</td><td>${c.recency}</td><td>${c.frequency}</td><td>${fmtMoney(c.monetary,cur)}</td></tr>`).join('')
     + '</tbody></table>';
   $('#drillcsv').onclick=()=>download(`segment_${seg.toLowerCase().replace(/\W+/g,'_')}.csv`, toCsv(rows));
   $('#drillall').onclick=()=>download('customers_all_segments.csv', toCsv(all));
@@ -413,7 +588,7 @@ function drill(r, seg){
 }
 $('#drillclose').onclick=()=>$('#drillcard').style.display='none';
 
-// campaign detail modal: full card for one suggested campaign
+// campaign detail modal: full card for one suggested campaign (PR #1)
 function openCamp(idx){
   if(!CUR) return;
   const cp=CUR.campaigns[idx]; if(!cp) return;
@@ -430,31 +605,30 @@ function openCamp(idx){
   $('#campBox').style.borderTopColor=color;
   $('#campBody').innerHTML=
     `<div class="mseg" id="cmSeg"><span class="dot" style="background:${color};width:14px;height:14px"></span>`
-    + `${esc(cp.segment)}<span class="pri ${pri}" style="margin-left:4px">${esc(pri)}</span></div>`
+    + `${esc(segName(cp.segment))}<span class="pri ${pri}" style="margin-left:4px">${esc(pri)}</span></div>`
     + `<div class="mhead">“${esc(cp.headline)}”</div>`
     + `<div class="mobj">${esc(cp.objective||'')}</div>`
 
-    + `<div class="sec">Campaign</div>`
-    + row('Channel', esc(cp.channel))
-    + row('Offer', esc(cp.offer))
-    + row('Rationale', esc(cp.rationale||'—'))
+    + `<div class="sec">${t('m_campaign')}</div>`
+    + row(t('m_channel'), esc(cp.channel))
+    + row(t('m_offer'), esc(cp.offer))
+    + row(t('m_rationale'), esc(cp.rationale||'—'))
 
-    + `<div class="sec">Projected impact</div>`
+    + `<div class="sec">${t('m_impact')}</div>`
     + `<div class="estbox"><div class="big">${fmtMoney(e.est_incremental_revenue||0,c)}</div>`
-    + `est. incremental revenue from ≈ ${e.expected_responders||0} responders`
-    + `<div class="formula">${seg.customers||0} customers × ${rate}% response`
-    + (aov!=null?` × ${fmtMoney(aov,c)} avg order` : '') + `</div></div>`
+    + tf('m_impact_note', {n:e.expected_responders||0})
+    + `<div class="formula">${tf('m_formula',{c:fmtNum(seg.customers||0), r:rate})}`
+    + (aov!=null?` × ${fmtMoney(aov,c)} ${t('m_aov')}` : '') + `</div></div>`
 
-    + `<div class="sec">Segment context</div>`
-    + row('Customers', `${(seg.customers||0).toLocaleString()} (${seg.share_pct!=null?seg.share_pct+'% of base':'—'})`)
-    + row('Revenue share', seg.rev_share_pct!=null?seg.rev_share_pct+'%':'—')
-    + row('Avg recency', seg.avg_recency!=null?Math.round(seg.avg_recency)+' days since last order':'—')
-    + row('Avg orders', seg.avg_frequency!=null?Number(seg.avg_frequency).toFixed(1):'—')
-    + row('Avg spend', seg.avg_monetary!=null?fmtMoney(seg.avg_monetary,c):'—')
+    + `<div class="sec">${t('m_context')}</div>`
+    + row(t('m_customers'), `${fmtNum(seg.customers||0)} (${seg.share_pct!=null?fmtDec(seg.share_pct)+' %':'—'})`)
+    + row(t('m_revshare'), seg.rev_share_pct!=null?fmtDec(seg.rev_share_pct)+' %':'—')
+    + row(t('m_recency'), seg.avg_recency!=null?tf('m_days',{d:Math.round(seg.avg_recency)}):'—')
+    + row(t('m_orders'), seg.avg_frequency!=null?fmtDec(Number(seg.avg_frequency.toFixed(1))):'—')
+    + row(t('m_spend'), seg.avg_monetary!=null?fmtMoney(seg.avg_monetary,c):'—')
 
-    + `<div class="note">Copy generated by ${isFallback?'a rule-based template (LLM offline)':esc(src)+' on-device'}.`
-    + ` Impact numbers are computed deterministically — never produced by the model.`
-    + (cp.llm_priority&&cp.llm_priority!==pri?` Model suggested priority: ${esc(cp.llm_priority)}; shown priority is ranked by revenue opportunity.`:'')
+    + `<div class="note">${isFallback?t('m_note_rule'):tf('m_note_llm',{s:esc(src)})} ${t('m_note_det')}`
+    + (cp.llm_priority&&cp.llm_priority!==pri?` ${tf('m_note_pri',{p:esc(cp.llm_priority)})}`:'')
     + `</div>`;
   $('#campModal').classList.add('open');
   $('#campClose').focus();
@@ -464,10 +638,19 @@ $('#campClose').onclick=closeCamp;
 $('#campModal').onclick=ev=>{ if(ev.target===$('#campModal')) closeCamp(); };
 document.addEventListener('keydown',ev=>{ if(ev.key==='Escape') closeCamp(); });
 
+$('#langtoggle').onclick=(e)=>{
+  e.preventDefault();
+  uiLang = uiLang==='cs'?'en':'cs';
+  localStorage.setItem('seg_ui_lang', uiLang);
+  applyLang();
+};
+
 async function load(){
   try{ const r=await fetch('/api/result'); if(r.ok){ render(await r.json()); return; } }catch(e){}
-  $('#meta').innerHTML='No result yet — <a href="/setup" style="color:var(--teal)">set up your data source</a> to get started.';
+  $('#meta').dataset.empty='1';
+  $('#meta').innerHTML=t('empty');
 }
+applyLang();
 load();
 </script>
 </body>

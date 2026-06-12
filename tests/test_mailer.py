@@ -168,3 +168,87 @@ def test_excel_preamble_header(tmp_path):
     assert list(df.columns) == ["email", "datum", "cena"]
     assert info["skipped_rows"] == 1          # title row skipped (blank dropped)
     assert len(df) == 2
+
+# --- the model may not promise concrete discounts either ----------------------
+
+def test_has_invented_discount():
+    from seg.campaigns import has_invented_discount
+    assert has_invented_discount({"offer": "15% sleva a doprava zdarma"})
+    assert has_invented_discount({"offer": "Sleva 100 Kč na nákup"})
+    assert has_invented_discount({"headline": "20 % off everything"})
+    assert not has_invented_discount({"offer": "Návratová nabídka jen na 14 dní"})
+    assert not has_invented_discount({"offer": "Doprava zdarma na druhou objednávku"})
+    assert not has_invented_discount({"offer": "Dvojnásobné věrnostní body"})
+
+
+def test_card_with_invented_discount_falls_back(monkeypatch):
+    import seg.campaigns as camp
+    monkeypatch.setattr(camp, "_ollama",
+                        lambda *a, **k: '{"objective":"x","channel":"Email",'
+                        '"offer":"25% off everything","headline":"Save 25%!",'
+                        '"rationale":"r","priority":"high"}')
+    c = camp.card_for_segment("At-risk", {"customers": 100, "share_pct": 10,
+        "rev_share_pct": 10, "avg_recency": 90, "avg_frequency": 2,
+        "avg_monetary": 500, "avg_order_value": 250},
+        {"peak_month": "Dec", "peak_uplift_pct": 40, "low_month": "Feb"},
+        use_llm=True)
+    assert c["_source"] == "fallback"          # discount-promising copy rejected
+    assert "25" not in c["offer"]
+
+
+def test_owner_discount_survives_policy():
+    # apply_discount output legitimately contains the value — policy is only
+    # about UNAPPROVED discounts at generation time
+    from seg.campaigns import apply_discount
+    out = apply_discount({"segment": "Loyal", "headline": "h", "offer": "o"},
+                         {"kind": "percent", "value": 15, "code": "OK15"},
+                         lang="cs", currency="Kč", use_llm=False)
+    assert "15 %" in out["offer"] and out["discount"]["code"] == "OK15"
+
+
+# --- contact passthrough: mailings get email + name ---------------------------
+
+def test_mailing_recipients_carry_email_and_name():
+    m = build_mailing(CARD, [
+        {"id": "c1", "email": "a@x.cz", "name": "Jana Nováková"},
+        {"id": "b@x.cz"},                       # id IS the e-mail
+        {"id": "hash123"},                      # no e-mail at all
+    ], lang="cs", currency="Kč")
+    r = m["recipients"]
+    assert r[0] == {"customer_id": "c1", "email": "a@x.cz", "name": "Jana Nováková"}
+    assert r[1]["email"] == "b@x.cz"
+    assert r[2]["email"] == ""
+    assert m["deliverable"] == 2
+
+
+def test_contact_columns_flow_to_result(tmp_path):
+    import pandas as pd
+    import pipeline
+    from seg.loader import load_dataframe
+    raw = pd.DataFrame({
+        "zakaznik": [f"id{i % 6}" for i in range(60)],
+        "mail": [f"z{i % 6}@x.cz" for i in range(60)],
+        "jmeno": [f"Jméno {i % 6}" for i in range(60)],
+        "datum": [f"2025-{1 + i % 12:02d}-10" for i in range(60)],
+        "cena": ["100"] * 60,
+    })
+    df = load_dataframe(raw, {"customer_id": "zakaznik", "order_date": "datum",
+                              "unit_price": "cena", "customer_email": "mail",
+                              "customer_name": "jmeno"})
+    assert "customer_email" in df.columns
+    res = pipeline.analyze(df, use_llm=False, out=None)
+    c0 = res["customers"][0]
+    assert c0["email"].endswith("@x.cz") and c0["name"].startswith("Jméno")
+
+
+def test_email_shaped_id_used_as_fallback():
+    import pandas as pd
+    import pipeline
+    from seg.loader import load_dataframe
+    raw = pd.DataFrame({
+        "customer_id": [f"kupec{i % 5}@seznam.cz" for i in range(50)],
+        "order_date": [f"2025-{1 + i % 12:02d}-01" for i in range(50)],
+        "unit_price": ["50"] * 50,
+    })
+    res = pipeline.analyze(load_dataframe(raw, {}), use_llm=False, out=None)
+    assert all(c["email"] == c["id"] for c in res["customers"])

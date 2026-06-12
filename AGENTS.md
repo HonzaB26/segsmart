@@ -88,9 +88,15 @@ CI (`.github/workflows/ci.yml`) runs pytest on every push/PR. Keep it green.
 - **LLM impact numbers are banned**: campaign cards get deterministic estimates
   (`seg/campaigns.py::RESPONSE` rates) and deterministic priority by revenue
   opportunity. The LLM writes copy, never numbers.
-- **LLM discount codes are banned too**: models fabricate Czech-lettered codes
-  no shop accepts. Prompts forbid them AND `strip_voucher_codes` scrubs the
-  output. Real codes enter only via `apply_discount` (owner input, validated).
+- **LLM discount codes AND discount values are banned**: models fabricate
+  Czech-lettered codes and promise percentages nobody approved. Prompts forbid
+  both; `strip_voucher_codes` scrubs codes; `has_invented_discount` demotes a
+  card promising concrete values to rule-based fallback copy. Real discounts
+  enter only via `apply_discount` (owner input, validated).
+- **Two language knobs, never merge them**: UI chrome language = client-side
+  toggle (each page's `UI` dict, localStorage `seg_ui_lang`); content language
+  (cards, warnings) = `output.language` per run, in `result.meta.language`.
+  New UI strings go into BOTH `en` and `cs` dicts in the same commit.
 - **File sources from the HTTP API are confined to `data/`**
   (`seg/config.py::fetch_raw trusted_paths`) — never relax this; it's what
   stops `/api/preview_source` from reading arbitrary local files.

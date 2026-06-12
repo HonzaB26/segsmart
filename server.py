@@ -74,20 +74,21 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self._authorized():
             return self._deny()
-        if self.path in ("/", "/index.html"):
+        path = self.path.split("?", 1)[0]           # ignore query string
+        if path in ("/", "/index.html"):
             with open(os.path.join(HERE, "index.html"), "rb") as f:
                 return self._send(200, f.read(), "text/html; charset=utf-8")
-        if self.path in ("/setup", "/setup.html"):
+        if path in ("/setup", "/setup.html"):
             with open(os.path.join(HERE, "setup.html"), "rb") as f:
                 return self._send(200, f.read(), "text/html; charset=utf-8")
-        if self.path == "/api/config":
+        if path == "/api/config":
             try:
                 return self._send(200, json.dumps(
                     {"path": cfgmod.CONFIG_PATH, "config": cfgmod.load_config()},
                     ensure_ascii=False))
             except Exception as e:
                 return self._send(500, json.dumps({"error": str(e)}))
-        if self.path == "/api/result":
+        if path == "/api/result":
             p = os.path.join(HERE, "out/result.json")
             if not os.path.exists(p):
                 return self._send(404, json.dumps({"error": "no result yet — run the pipeline"}))
@@ -162,6 +163,13 @@ class H(BaseHTTPRequestHandler):
                 if not recipients:
                     return self._send(400, json.dumps(
                         {"error": "no recipients — run a segmentation first"}))
+                # explicit confirmation required — launch can hit a live mailer
+                # webhook; one accidental click must never mail a whole segment
+                if req.get("confirm") is not True:
+                    return self._send(400, json.dumps(
+                        {"error": "confirmation required",
+                         "confirm_needed": True,
+                         "recipients": len(recipients)}))
                 mailing = build_mailing(card, recipients,
                                         lang=req.get("language", "en"),
                                         currency=req.get("currency", "£"))
@@ -169,6 +177,7 @@ class H(BaseHTTPRequestHandler):
                 report = deliver(mailing, (cfgmod.load_config().get("mailer")))
                 return self._send(200, json.dumps(
                     {"saved": path, "recipients": len(mailing["recipients"]),
+                     "deliverable": mailing["deliverable"],
                      "delivery": report, "mailing": mailing}, ensure_ascii=False))
             except Exception as e:
                 return self._send(500, json.dumps({"error": str(e)}))

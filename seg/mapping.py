@@ -25,16 +25,22 @@ CANONICAL = {
     "line_value": "line or order TOTAL value (optional; use when there is no unit price)",
     "product": "product name or id (optional)",
     "country": "country (optional)",
+    "customer_email": "customer e-mail address, if separate from the id (optional)",
+    "customer_name": "customer's personal/company name (optional)",
 }
 
 # multilingual header aliases (lowercased substrings) for the heuristic fallback.
 # ORDER MATTERS: line_value before unit_price so 'cena celkem' lands on the
-# total, while plain 'cena' still lands on unit_price.
+# total, plain 'cena' still lands on unit_price; customer_name before
+# customer_id so 'Jméno zákazníka' isn't eaten by the id alias 'zakazn'.
 ALIASES = {
+    "customer_name": ["jmeno", "jméno", "prijmeni", "příjmení", "customer name",
+                      "contact name", "full name", "vorname", "nachname"],
     "customer_id": ["customer", "zakazn", "zákazn", "klient", "kunde", "cliente",
                     "client", "email", "e-mail", "mail", "user", "uzivatel",
                     "uživatel", "odberatel", "odběratel", "kupujic", "kupujíc",
                     "buyer", "firma", "company", "telefon", "phone", "key"],
+    "customer_email": ["email", "e-mail", "mail", "kontakt"],
     "order_id": ["order", "objedn", "obj.", "invoice", "faktur", "transaction",
                  "transak", "bestell", "pedido", "doklad", "code"],
     "order_date": ["date", "datum", "datetime", "created", "creation", "time",
