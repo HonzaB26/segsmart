@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -84,6 +84,31 @@
   .drill td{padding:4px 8px;border-bottom:1px solid var(--line)}
   .mig{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
   .mig span{background:var(--panel2);border-radius:999px;padding:5px 12px;font-size:12.5px}
+  .camp{cursor:pointer;transition:border-color .12s,transform .12s,box-shadow .12s}
+  .camp:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.28)}
+  .camp:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  .camp .more{position:absolute;right:12px;top:12px;font-size:11px;color:var(--mut)}
+  .modal{position:fixed;inset:0;background:rgba(10,8,30,.66);backdrop-filter:blur(2px);
+         display:none;align-items:center;justify-content:center;padding:22px;z-index:50}
+  .modal.open{display:flex}
+  .modal .box{background:var(--panel);border:1px solid var(--line);border-radius:18px;
+              width:100%;max-width:560px;max-height:90vh;overflow:auto;padding:22px 24px;
+              border-top:5px solid var(--mut);position:relative}
+  .modal .x{position:absolute;right:14px;top:12px;background:transparent;border:0;color:var(--mut);
+            font-size:22px;line-height:1;cursor:pointer;padding:4px 8px}
+  .modal .x:hover{color:var(--ink)}
+  .modal .mseg{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:800}
+  .modal .mhead{font-size:20px;font-weight:700;margin:14px 0 4px;line-height:1.3}
+  .modal .mobj{color:var(--mut);font-size:13.5px;margin-bottom:14px}
+  .modal .row{display:grid;grid-template-columns:120px 1fr;gap:6px 14px;font-size:13.5px;
+              padding:8px 0;border-bottom:1px solid var(--line)}
+  .modal .row .lbl{color:var(--mut)}
+  .modal .sec{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);
+              margin:18px 0 6px}
+  .modal .estbox{background:var(--panel2);border-radius:12px;padding:12px 14px;font-size:13px}
+  .modal .estbox .big{font-size:24px;font-weight:800;color:var(--teal);margin-bottom:4px}
+  .modal .formula{color:var(--mut);font-size:12px;margin-top:8px;font-family:ui-monospace,Consolas,monospace}
+  .modal .note{color:#7c79b8;font-size:11.5px;margin-top:16px}
 </style>
 </head>
 <body>
@@ -150,6 +175,13 @@
     · <a href="/setup" style="color:#7c79b8">data setup</a></div>
 </div>
 
+<div class="modal" id="campModal" role="dialog" aria-modal="true" aria-labelledby="cmSeg">
+  <div class="box" id="campBox">
+    <button class="x" id="campClose" aria-label="Close">×</button>
+    <div id="campBody"></div>
+  </div>
+</div>
+
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,
@@ -158,7 +190,9 @@ const fmtMoney = (n, c) => c === 'Kč'
   ? new Intl.NumberFormat('cs-CZ',{maximumFractionDigits:0}).format(n) + ' Kč'
   : c + new Intl.NumberFormat('en-GB',{maximumFractionDigits:0}).format(n);
 
+let CURRENT=null;
 function render(r){
+  CURRENT=r;
   const c = r.meta.currency || '£';
   $('#meta').textContent =
     `${r.meta.rows.toLocaleString()} transactions · ${r.meta.customers.toLocaleString()} customers · `
@@ -269,9 +303,10 @@ function renderCampaigns(r){
     const e=cp.estimate;
     const pri = ['high','medium','low'].includes(cp.priority)?cp.priority:'medium';
     const d=cp.discount;
-    return `<div class="camp" style="border-left-color:${(r.segments.find(s=>s.name===cp.segment)||{}).color||'#888'}">
+    return `<div class="camp" data-idx="${i}" tabindex="0" style="border-left-color:${(r.segments.find(s=>s.name===cp.segment)||{}).color||'#888'}">
       <div class="top"><span class="seg">${esc(cp.segment)}</span>
         <span class="pri ${pri}">${esc(pri)}</span></div>
+      <span class="more">details →</span>
       <div class="head">“${esc(cp.headline)}”</div>
       <div class="det">${esc(cp.channel)} · ${esc(cp.offer)}</div>
       <div class="det" style="margin-top:3px">${esc(cp.rationale||'')}</div>
@@ -301,6 +336,7 @@ function renderCampaigns(r){
   $('#llmtag').textContent = llmName.includes('fallback')?'· rule-based':'· '+llmName+' (on-device)';
 
   document.querySelectorAll('#camps [data-act]').forEach(b=>b.onclick=()=>cardAction(b.dataset.act,+b.dataset.i));
+  document.querySelectorAll('#camps .camp').forEach(el=>{ const open=()=>openCamp(+el.dataset.idx); el.onclick=ev=>{ if(ev.target.closest('button,select,input')) return; open(); }; el.onkeydown=ev=>{ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); open(); } }; });
 }
 
 async function cardAction(act, i){
@@ -376,6 +412,57 @@ function drill(r, seg){
   $('#drillcard').scrollIntoView({behavior:'smooth'});
 }
 $('#drillclose').onclick=()=>$('#drillcard').style.display='none';
+
+// campaign detail modal: full card for one suggested campaign
+function openCamp(idx){
+  if(!CUR) return;
+  const cp=CUR.campaigns[idx]; if(!cp) return;
+  const c=CUR.meta.currency||'£';
+  const seg=CUR.segments.find(s=>s.name===cp.segment)||{};
+  const color=seg.color||'#888';
+  const e=cp.estimate||{};
+  const pri=['high','medium','low'].includes(cp.priority)?cp.priority:'medium';
+  const rate=Math.round((e.assumed_response_rate||0)*100);
+  const src=cp._source||'';
+  const isFallback=src.includes('fallback');
+  const aov=seg.avg_order_value;
+  const row=(l,v)=>`<div class="row"><span class="lbl">${l}</span><span>${v}</span></div>`;
+  $('#campBox').style.borderTopColor=color;
+  $('#campBody').innerHTML=
+    `<div class="mseg" id="cmSeg"><span class="dot" style="background:${color};width:14px;height:14px"></span>`
+    + `${esc(cp.segment)}<span class="pri ${pri}" style="margin-left:4px">${esc(pri)}</span></div>`
+    + `<div class="mhead">“${esc(cp.headline)}”</div>`
+    + `<div class="mobj">${esc(cp.objective||'')}</div>`
+
+    + `<div class="sec">Campaign</div>`
+    + row('Channel', esc(cp.channel))
+    + row('Offer', esc(cp.offer))
+    + row('Rationale', esc(cp.rationale||'—'))
+
+    + `<div class="sec">Projected impact</div>`
+    + `<div class="estbox"><div class="big">${fmtMoney(e.est_incremental_revenue||0,c)}</div>`
+    + `est. incremental revenue from ≈ ${e.expected_responders||0} responders`
+    + `<div class="formula">${seg.customers||0} customers × ${rate}% response`
+    + (aov!=null?` × ${fmtMoney(aov,c)} avg order` : '') + `</div></div>`
+
+    + `<div class="sec">Segment context</div>`
+    + row('Customers', `${(seg.customers||0).toLocaleString()} (${seg.share_pct!=null?seg.share_pct+'% of base':'—'})`)
+    + row('Revenue share', seg.rev_share_pct!=null?seg.rev_share_pct+'%':'—')
+    + row('Avg recency', seg.avg_recency!=null?Math.round(seg.avg_recency)+' days since last order':'—')
+    + row('Avg orders', seg.avg_frequency!=null?Number(seg.avg_frequency).toFixed(1):'—')
+    + row('Avg spend', seg.avg_monetary!=null?fmtMoney(seg.avg_monetary,c):'—')
+
+    + `<div class="note">Copy generated by ${isFallback?'a rule-based template (LLM offline)':esc(src)+' on-device'}.`
+    + ` Impact numbers are computed deterministically — never produced by the model.`
+    + (cp.llm_priority&&cp.llm_priority!==pri?` Model suggested priority: ${esc(cp.llm_priority)}; shown priority is ranked by revenue opportunity.`:'')
+    + `</div>`;
+  $('#campModal').classList.add('open');
+  $('#campClose').focus();
+}
+function closeCamp(){ $('#campModal').classList.remove('open'); }
+$('#campClose').onclick=closeCamp;
+$('#campModal').onclick=ev=>{ if(ev.target===$('#campModal')) closeCamp(); };
+document.addEventListener('keydown',ev=>{ if(ev.key==='Escape') closeCamp(); });
 
 async function load(){
   try{ const r=await fetch('/api/result'); if(r.ok){ render(await r.json()); return; } }catch(e){}
