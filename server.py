@@ -7,11 +7,12 @@ POST /api/run       -> run the pipeline live; optional CSV upload + column map
 Run:  python3 server.py     then open http://localhost:8099
 Everything — data, models, AI campaign copy — stays on this machine.
 """
-import csv, io, json, os, tempfile
+import base64, json, os, tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pipeline
 from seg.mapping import infer_mapping
+from seg.sniff import read_table
 from seg.util import NoValidData
 
 PORT = int(os.environ.get("SEG_PORT", "8099"))
@@ -55,17 +56,32 @@ class H(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             return self._send(400, json.dumps({"error": "invalid JSON body"}))
 
-        # --- onboarding: propose a column mapping for an uploaded CSV ---
+        # uploaded file arrives as base64 bytes (file_b64 + filename) so odd
+        # encodings and Excel survive the browser; csv_text kept for compat
+        def _upload_bytes():
+            if req.get("file_b64"):
+                return base64.b64decode(req["file_b64"]), req.get("filename", "")
+            if req.get("csv_text"):
+                return req["csv_text"].encode("utf-8"), "upload.csv"
+            return None, ""
+
+        # --- onboarding: propose a column mapping for an uploaded file ---
         if self.path == "/api/infer_mapping":
             try:
-                rows = list(csv.reader(io.StringIO(req.get("csv_text", ""))))
-                if not rows:
-                    return self._send(400, json.dumps({"error": "empty CSV"}))
-                header, samples = rows[0], rows[1:6]
-                out = infer_mapping(header, samples, use_llm=req.get("use_llm", True))
+                data, fname = _upload_bytes()
+                if not data:
+                    return self._send(400, json.dumps({"error": "empty upload"}))
+                raw, info = read_table(data, filename=fname)
+                header = list(raw.columns)
+                samples = raw.head(5).astype(str).values.tolist()
+                out = infer_mapping(header, samples, use_llm=req.get("use_llm", True),
+                                    delimiter=info.get("delimiter"))
                 out["header"] = header
                 out["preview"] = samples
+                out["sniff"] = info
                 return self._send(200, json.dumps(out, ensure_ascii=False))
+            except NoValidData as e:
+                return self._send(400, json.dumps({"error": str(e)}))
             except Exception as e:
                 return self._send(500, json.dumps({"error": str(e)}))
 
@@ -75,9 +91,11 @@ class H(BaseHTTPRequestHandler):
         currency = req.get("currency", "£")
         path = None
         try:
-            if req.get("csv_text"):
-                with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False) as tf:
-                    tf.write(req["csv_text"]); path = tf.name
+            data, fname = _upload_bytes()
+            if data:
+                suffix = os.path.splitext(fname)[1] or ".csv"
+                with tempfile.NamedTemporaryFile("wb", suffix=suffix, delete=False) as tf:
+                    tf.write(data); path = tf.name
                 # out=None: uploaded customer data is NOT persisted to the shared file
                 res = pipeline.run(source="csv", path=path, currency=currency,
                                    use_llm=use_llm, mapping=req.get("mapping"),

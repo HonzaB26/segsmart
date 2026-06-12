@@ -119,7 +119,7 @@
   <div class="card" style="margin-top:16px">
     <h3>Run on your own data</h3>
     <div class="controls">
-      <input type="file" id="file" accept=".csv">
+      <input type="file" id="file" accept=".csv,.tsv,.txt,.xls,.xlsx">
       <button id="analyze">Analyze my file ▸</button>
       <button class="ghost" id="reload">Reload sample</button>
       <span id="status"></span>
@@ -254,24 +254,32 @@ async function load(){
 
 const CANON_FIELDS = [
   ['customer_id','Customer (id / e-mail)',true],
-  ['order_id','Order / invoice id',true],
+  ['order_id','Order / invoice id (optional)',false],
   ['order_date','Order date',true],
-  ['quantity','Quantity',true],
-  ['unit_price','Unit price',true],
+  ['quantity','Quantity (optional)',false],
+  ['unit_price','Unit price',false],
+  ['line_value','Line / order total (optional)',false],
   ['product','Product (optional)',false],
   ['country','Country (optional)',false],
 ];
-let uploadedCsv = '';
+let uploadedB64 = '', uploadedName = '';
+
+async function fileToB64(f){
+  const buf = new Uint8Array(await f.arrayBuffer());
+  let s = '';
+  for(let i=0;i<buf.length;i+=0x8000) s += String.fromCharCode.apply(null, buf.subarray(i,i+0x8000));
+  return btoa(s);
+}
 
 // step 1 — analyze: let the local model propose a mapping
 $('#analyze').onclick = async ()=>{
   const f=$('#file').files[0];
-  if(!f){ $('#status').textContent='pick a CSV first'; return; }
-  uploadedCsv = await f.text();
+  if(!f){ $('#status').textContent='pick a file first (CSV, TSV or Excel)'; return; }
+  uploadedB64 = await fileToB64(f); uploadedName = f.name;
   $('#status').textContent='analyzing locally…';
   try{
     const r=await fetch('/api/infer_mapping',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({csv_text:uploadedCsv, use_llm:true})});
+      body:JSON.stringify({file_b64:uploadedB64, filename:uploadedName, use_llm:true})});
     const d=await r.json();
     if(d.error){ $('#status').textContent='error: '+d.error; return; }
     buildMapper(d);
@@ -302,7 +310,8 @@ $('#run').onclick = async ()=>{
   const mapping={};
   document.querySelectorAll('#maprows select').forEach(s=>{ if(s.value) mapping[s.dataset.k]=s.value; });
   for(const [k,,req] of CANON_FIELDS) if(req && !mapping[k]){ $('#run_status').textContent='set '+k+' first'; return; }
-  const body={csv_text:uploadedCsv, mapping, use_llm:$('#llm').checked,
+  if(!mapping.unit_price && !mapping.line_value){ $('#run_status').textContent='set a unit price or a total column first'; return; }
+  const body={file_b64:uploadedB64, filename:uploadedName, mapping, use_llm:$('#llm').checked,
     currency:$('#m_currency').value||'€', decimal:$('#m_decimal').value, language:$('#m_lang').value};
   $('#run_status').textContent='running locally…';
   try{

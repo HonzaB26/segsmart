@@ -12,30 +12,101 @@ quantity    : float  unit_price : float   line_value : float (= qty*price)
 product     : str    country : str
 """
 from __future__ import annotations
+import re
+
+import numpy as np
 import pandas as pd
+
+from seg.util import NoValidData
 
 CANON = ["customer_id", "order_id", "order_date",
          "quantity", "unit_price", "line_value", "product", "country"]
 
 
+def _guess_dayfirst(txt: pd.Series) -> bool:
+    """Is '05/03/2026' the 5th of March (EU) or May 3rd (US)? Look for an
+    unambiguous row (a component > 12); fall back on the separator: dotted
+    dates ('5.3.2026') are the European convention."""
+    sample = txt.dropna().astype(str).head(500)
+    first_gt12 = second_gt12 = dotted = False
+    for v in sample:
+        m = re.match(r"\s*(\d{1,2})([./-])(\d{1,2})[./-]", v)
+        if not m:
+            continue
+        a, sep, b = int(m.group(1)), m.group(2), int(m.group(3))
+        first_gt12 |= a > 12
+        second_gt12 |= b > 12
+        dotted |= sep == "."
+    if first_gt12 and not second_gt12:
+        return True
+    if second_gt12 and not first_gt12:
+        return False
+    return dotted
+
+
+def _parse_dates(s: pd.Series) -> pd.Series:
+    """Whatever the export calls a date -> datetime64. Handles ISO, EU/US
+    orders, Excel serial numbers, unix epochs; bad cells become NaT."""
+    if pd.api.types.is_datetime64_any_dtype(s):
+        return s
+    num = pd.to_numeric(s, errors="coerce")
+    if num.notna().mean() > 0.9:                     # purely numeric column
+        med = num.median()
+        if 20000 <= med <= 80000:                    # Excel serial (1954..2119)
+            return pd.to_datetime(num, unit="D", origin="1899-12-30", errors="coerce")
+        if 1e9 <= med <= 3e9:                        # unix seconds
+            return pd.to_datetime(num, unit="s", errors="coerce")
+        if 1e12 <= med <= 3e12:                      # unix milliseconds
+            return pd.to_datetime(num, unit="ms", errors="coerce")
+    txt = s.astype(str)
+    return pd.to_datetime(txt, errors="coerce", format="mixed",
+                          dayfirst=_guess_dayfirst(txt))
+
+
 def _finalize(df: pd.DataFrame, drop_cancellations=True, drop_nonpositive=True) -> pd.DataFrame:
-    """Shared cleaning every adapter funnels through."""
+    """Shared cleaning every adapter funnels through. Tolerates missing
+    columns where a sane default exists (the messy-CSV contract):
+      no order_id  -> one order per customer per day
+      no quantity  -> 1
+      no unit_price but a line total -> derived from the total
+    Only customer_id + order_date + some money column are truly required."""
     df = df.copy()
-    df["order_date"] = pd.to_datetime(df["order_date"])
-    df["customer_id"] = df["customer_id"].astype(str)
+    for col in ("customer_id", "order_date"):
+        if col not in df:
+            raise NoValidData(f"could not find a {col.replace('_', ' ')} column — "
+                              "map it manually in the wizard")
+    df["order_date"] = _parse_dates(df["order_date"])
+    df["customer_id"] = df["customer_id"].astype(str).str.strip()
+    df = df.dropna(subset=["order_date"])
+    df = df[~df["customer_id"].str.lower().isin(("", "nan", "none"))]
+    if "order_id" not in df:                        # transaction dump: synthesize
+        df["order_id"] = (df["customer_id"] + "@"
+                          + df["order_date"].dt.strftime("%Y-%m-%d"))
     df["order_id"] = df["order_id"].astype(str)
-    df = df.dropna(subset=["customer_id", "order_date"])
-    df = df[df["customer_id"].str.lower().ne("nan")]            # excel NaN -> "nan"
-    df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce")
+    if "quantity" not in df:
+        df["quantity"] = 1.0
+    df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce").fillna(1.0)
+    has_total = "line_value" in df
+    if has_total:
+        df["line_value"] = pd.to_numeric(df["line_value"], errors="coerce")
+    if "unit_price" not in df:
+        if not has_total:
+            raise NoValidData("could not find a price or order-total column — "
+                              "map one manually in the wizard")
+        qty = df["quantity"].replace(0, np.nan)
+        df["unit_price"] = df["line_value"] / qty
     df["unit_price"] = pd.to_numeric(df["unit_price"], errors="coerce")
-    df = df.dropna(subset=["quantity", "unit_price"])
+    df = df.dropna(subset=["unit_price"])
     if drop_cancellations:
         # a cancellation/return: negative quantity, or order id flagged 'C'
         df = df[~df["order_id"].str.upper().str.startswith("C")]
         df = df[df["quantity"] > 0]
     if drop_nonpositive:
         df = df[df["unit_price"] > 0]
-    df["line_value"] = df["quantity"] * df["unit_price"]
+    if has_total:                                   # the export's total is authoritative
+        df["line_value"] = df["line_value"].fillna(df["quantity"] * df["unit_price"])
+    else:
+        df["line_value"] = df["quantity"] * df["unit_price"]
     if "product" not in df:
         df["product"] = ""
     if "country" not in df:
@@ -60,7 +131,7 @@ def load_uci(path: str = "data/online_retail.parquet") -> pd.DataFrame:
 # {canonical_name: their_column_name}; line_value is derived if absent.
 DEFAULT_MAP = {
     "customer_id": "customer_id", "order_id": "order_id", "order_date": "order_date",
-    "quantity": "quantity", "unit_price": "unit_price",
+    "quantity": "quantity", "unit_price": "unit_price", "line_value": "line_value",
     "product": "product", "country": "country",
 }
 
@@ -97,9 +168,12 @@ def load_dataframe(raw: pd.DataFrame, mapping: dict | None = None,
 
 def load_csv(path: str, mapping: dict | None = None, decimal: str = ".",
              **read_kwargs) -> pd.DataFrame:
-    read_kwargs.setdefault("dtype", str)          # let _to_num control parsing
-    read_kwargs.setdefault("keep_default_na", False)
-    return load_dataframe(pd.read_csv(path, **read_kwargs), mapping, decimal)
+    """Load a CSV/TSV/Excel file of any flavour (encoding, delimiter and header
+    position are sniffed by seg.sniff). read_kwargs kept for API compat."""
+    from seg.sniff import read_table                  # local import: no cycle
+    with open(path, "rb") as f:
+        raw, _info = read_table(f.read(), filename=path)
+    return load_dataframe(raw, mapping, decimal)
 
 
 def _czk(s: pd.Series) -> pd.Series:

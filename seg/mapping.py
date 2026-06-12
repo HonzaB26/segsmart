@@ -18,24 +18,31 @@ MAP_MODEL = os.environ.get("SEG_MAP_MODEL", "gemma4:e4b")   # fast; interactive
 
 CANONICAL = {
     "customer_id": "customer identifier — email, id, hash, phone",
-    "order_id": "order / invoice / transaction id",
+    "order_id": "order / invoice / transaction id (optional)",
     "order_date": "order date or datetime",
-    "quantity": "quantity / amount of the item",
+    "quantity": "quantity / amount of the item (optional)",
     "unit_price": "price per unit",
+    "line_value": "line or order TOTAL value (optional; use when there is no unit price)",
     "product": "product name or id (optional)",
     "country": "country (optional)",
 }
 
-# multilingual header aliases (lowercased substrings) for the heuristic fallback
+# multilingual header aliases (lowercased substrings) for the heuristic fallback.
+# ORDER MATTERS: line_value before unit_price so 'cena celkem' lands on the
+# total, while plain 'cena' still lands on unit_price.
 ALIASES = {
-    "customer_id": ["customer", "zakazn", "zákazn", "kunde", "cliente", "client",
-                    "email", "e-mail", "mail", "user", "uzivatel", "uživatel", "key"],
-    "order_id": ["order", "objedn", "invoice", "faktur", "transaction", "transak",
-                 "bestell", "pedido", "doklad", "code"],
+    "customer_id": ["customer", "zakazn", "zákazn", "klient", "kunde", "cliente",
+                    "client", "email", "e-mail", "mail", "user", "uzivatel",
+                    "uživatel", "odberatel", "odběratel", "kupujic", "kupujíc",
+                    "buyer", "firma", "company", "telefon", "phone", "key"],
+    "order_id": ["order", "objedn", "obj.", "invoice", "faktur", "transaction",
+                 "transak", "bestell", "pedido", "doklad", "code"],
     "order_date": ["date", "datum", "datetime", "created", "creation", "time",
                    "cas", "čas", "den", "zeit", "fecha"],
     "quantity": ["quantity", "qty", "mnozstv", "množstv", "amount", "pocet", "počet",
                  "menge", "cantidad", "ks", "pieces", "kusy"],
+    "line_value": ["line_value", "celkem", "total", "summe", "gesamt", "castka",
+                   "částka", "suma", "trzb", "tržb", "revenue", "hodnota", "subtotal"],
     "unit_price": ["unit_price", "unitprice", "price", "cena", "preis", "precio",
                    "prix", "jednotk", "cena_ks"],
     "product": ["product", "produkt", "item", "sku", "zbozi", "zboží", "nazev",
@@ -47,7 +54,7 @@ CURRENCY_HINTS = {"Kč": ["kc", "kč", "czk"], "€": ["eur", "€"], "$": ["usd
                   "£": ["gbp", "£"], "zł": ["pln", "zł", "zl"]}
 
 
-def _heuristic(header: list[str], samples: list[list]) -> dict:
+def _heuristic(header: list[str], samples: list[list], delimiter: str | None = None) -> dict:
     used, mapping = set(), {}
     low = [(h, h.lower()) for h in header]
     for canon, keys in ALIASES.items():
@@ -62,7 +69,16 @@ def _heuristic(header: list[str], samples: list[list]) -> dict:
     blob = " ".join(header).lower() + " " + " ".join(
         str(c) for row in samples for c in row).lower()
     currency = next((sym for sym, ks in CURRENCY_HINTS.items() if any(k in blob for k in ks)), "")
-    decimal = "," if re.search(r"\d+,\d{2}\b", blob) else "."
+    # decimal: which separator is used as 'digits<sep>1-2 digits'? a semicolon
+    # delimiter is itself strong evidence of a decimal-comma locale
+    commas = len(re.findall(r"\d+,\d{1,2}(?!\d)", blob))
+    dots = len(re.findall(r"\d+\.\d{1,2}(?!\d)", blob))
+    if commas > dots:
+        decimal = ","
+    elif dots > commas:
+        decimal = "."
+    else:
+        decimal = "," if delimiter == ";" else "."
     lang = "cs" if re.search(r"[ěščřžýáíéúůňťď]", blob) else "en"
     return {"mapping": mapping, "currency": currency, "decimal": decimal,
             "language": lang, "source": "heuristic"}
@@ -96,12 +112,13 @@ def _llm(header: list[str], samples: list[list], timeout=90) -> dict | None:
         return None
 
 
-def infer_mapping(header: list[str], samples: list[list], use_llm=True) -> dict:
+def infer_mapping(header: list[str], samples: list[list], use_llm=True,
+                  delimiter: str | None = None) -> dict:
     """Propose a column mapping + currency/decimal/language for a raw CSV.
     LLM-first, heuristic fallback; always validates columns actually exist."""
-    result = (_llm(header, samples) if use_llm else None) or _heuristic(header, samples)
+    result = (_llm(header, samples) if use_llm else None) or _heuristic(header, samples, delimiter)
     # keep only mappings whose target column truly exists; fill gaps from heuristic
-    heur = _heuristic(header, samples)
+    heur = _heuristic(header, samples, delimiter)
     m = {k: v for k, v in (result.get("mapping") or {}).items() if v in header}
     for k, v in heur["mapping"].items():
         m.setdefault(k, v)
@@ -113,9 +130,12 @@ def infer_mapping(header: list[str], samples: list[list], use_llm=True) -> dict:
     if result.get("decimal") not in (",", "."):
         result["decimal"] = heur["decimal"]
     result.setdefault("language", heur["language"])
-    # confidence = required fields covered
-    required = {"customer_id", "order_id", "order_date", "quantity", "unit_price"}
-    result["missing_required"] = sorted(required - set(m))
+    # truly required: who, when, and some money column (order_id and quantity
+    # are synthesized by the loader when absent)
+    missing = sorted({"customer_id", "order_date"} - set(m))
+    if "unit_price" not in m and "line_value" not in m:
+        missing.append("unit_price (or a total column)")
+    result["missing_required"] = missing
     return result
 
 

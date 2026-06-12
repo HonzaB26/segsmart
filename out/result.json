@@ -21,62 +21,62 @@
     {
       "name": "Champions",
       "color": "#2dd4bf",
-      "customers": 835,
-      "share_pct": 20.9,
-      "revenue": 41177071.8,
-      "rev_share_pct": 59.0,
-      "avg_recency": 27.7,
-      "avg_frequency": 14.8,
-      "avg_monetary": 49313.9,
-      "avg_order_value": 3407.9
+      "customers": 771,
+      "share_pct": 19.3,
+      "revenue": 40189867.1,
+      "rev_share_pct": 57.6,
+      "avg_recency": 27.1,
+      "avg_frequency": 15.3,
+      "avg_monetary": 52126.9,
+      "avg_order_value": 3518.7
     },
     {
       "name": "Loyal",
       "color": "#a78bfa",
-      "customers": 1118,
-      "share_pct": 28.0,
-      "revenue": 22683608.5,
-      "rev_share_pct": 32.5,
-      "avg_recency": 159.5,
+      "customers": 884,
+      "share_pct": 22.1,
+      "revenue": 20241762.0,
+      "rev_share_pct": 29.0,
+      "avg_recency": 96.8,
       "avg_frequency": 8.5,
-      "avg_monetary": 20289.5,
-      "avg_order_value": 2205.3
+      "avg_monetary": 22897.9,
+      "avg_order_value": 2473.8
     },
     {
       "name": "At-risk",
       "color": "#f59e0b",
-      "customers": 562,
-      "share_pct": 14.1,
-      "revenue": 3412174.1,
-      "rev_share_pct": 4.9,
-      "avg_recency": 280.2,
-      "avg_frequency": 4.6,
-      "avg_monetary": 6071.5,
-      "avg_order_value": 1232.5
+      "customers": 815,
+      "share_pct": 20.4,
+      "revenue": 7105347.7,
+      "rev_share_pct": 10.2,
+      "avg_recency": 332.0,
+      "avg_frequency": 6.4,
+      "avg_monetary": 8718.2,
+      "avg_order_value": 1357.4
     },
     {
       "name": "New",
       "color": "#84cc16",
-      "customers": 627,
-      "share_pct": 15.7,
-      "revenue": 1056297.2,
-      "rev_share_pct": 1.5,
-      "avg_recency": 26.0,
-      "avg_frequency": 2.0,
-      "avg_monetary": 1684.7,
-      "avg_order_value": 825.0
+      "customers": 743,
+      "share_pct": 18.6,
+      "revenue": 1173427.0,
+      "rev_share_pct": 1.7,
+      "avg_recency": 33.6,
+      "avg_frequency": 1.9,
+      "avg_monetary": 1579.3,
+      "avg_order_value": 823.7
     },
     {
       "name": "Dormant",
       "color": "#f87171",
-      "customers": 855,
-      "share_pct": 21.4,
-      "revenue": 1447337.2,
-      "rev_share_pct": 2.1,
-      "avg_recency": 451.7,
-      "avg_frequency": 2.1,
-      "avg_monetary": 1692.8,
-      "avg_order_value": 747.6
+      "customers": 784,
+      "share_pct": 19.6,
+      "revenue": 1066085.0,
+      "rev_share_pct": 1.5,
+      "avg_recency": 458.3,
+      "avg_frequency": 2.0,
+      "avg_monetary": 1359.8,
+      "avg_order_value": 691.6
     }
   ],
   "seasonality": {
@@ -259,65 +259,65 @@
   },
   "campaigns": [
     {
-      "objective": "Odměnit a rozšířit nákup; udržet vztah",
+      "objective": "Zvýšit retenci a podpořit zimní nákupy.",
       "channel": "E-mail",
-      "offer": "VIP přístup k novinkám + dárek",
-      "headline": "VIP přístup k novinkám + dárek",
-      "rationale": "Pravidlové výchozí nastavení.",
+      "offer": "Doprava zdarma nad Kč3000 a dárkový poukaz Kč500.",
+      "headline": "Děkujeme za věrnost. Zimní sleva a doprava zdarma.",
+      "rationale": "Championi generují většinu tržeb a kupují měsíčně. E-mail je nákladově efektivní a umožňuje personalizaci pro udržení loajality.",
       "priority": "high",
-      "_source": "fallback",
+      "_source": "qwen3.6:35b",
       "estimate": {
         "assumed_response_rate": 0.25,
-        "expected_responders": 209,
-        "est_incremental_revenue": 712251
+        "expected_responders": 193,
+        "est_incremental_revenue": 679109
       },
       "segment": "Champions",
-      "llm_priority": "medium"
+      "llm_priority": "high"
     },
     {
-      "objective": "Obnovení nákupů u věrných zákazníků do měsíce",
+      "objective": "Obnovení nákupu u loajálních zákazníků v příštím měsíci",
       "channel": "E-mail",
-      "offer": "Sleva 300 Kč na objednávky nad 2000 Kč",
-      "headline": "Vítejte zpět! Vaše věrnostní sleva čeká.",
-      "rationale": "E-mail je levný a cílený. Věrní zákazníci reagují na osobní slevu po delší pauze.",
+      "offer": "15% sleva a doprava zdarma na objednávku nad 2000 Kč",
+      "headline": "Vaše věrnost oceníme: speciální nabídka jen pro vás",
+      "rationale": "Loajální segment tvoří třetinu tržeb. E-mail je levný a cílený. Sleva s prahem chrání marži a urychlí rozhodování.",
       "priority": "high",
       "_source": "qwen3.6:35b",
       "estimate": {
         "assumed_response_rate": 0.15,
-        "expected_responders": 168,
-        "est_incremental_revenue": 370490
+        "expected_responders": 133,
+        "est_incremental_revenue": 329015
       },
       "segment": "Loyal",
       "llm_priority": "high"
     },
     {
-      "objective": "Zvýšit opakování nákupů u nováčků",
+      "objective": "Podpořit klíčový druhý nákup",
       "channel": "E-mail",
-      "offer": "Sleva 200 Kč na další objednávku",
-      "headline": "Děkujeme za důvěru, máte pro vás slevu",
-      "rationale": "E-mail je levný. Nováčci po měsíci potřebují impulz. Sleva 200 Kč přesahuje průměr a zvýší opakování nákupů.",
+      "offer": "Doprava zdarma na druhou objednávku",
+      "headline": "Doprava zdarma na druhou objednávku",
+      "rationale": "Pravidlové výchozí nastavení.",
       "priority": "medium",
-      "_source": "qwen3.6:35b",
+      "_source": "fallback",
       "estimate": {
         "assumed_response_rate": 0.2,
-        "expected_responders": 125,
-        "est_incremental_revenue": 103125
+        "expected_responders": 149,
+        "est_incremental_revenue": 122731
       },
       "segment": "New",
-      "llm_priority": "high"
+      "llm_priority": "medium"
     },
     {
-      "objective": "Získat zpět neaktivní zákazníky",
+      "objective": "Znovuaktivovat ztracené zákazníky před zimou",
       "channel": "E-mail",
-      "offer": "Doprava zdarma při nákupu od Kč 1 200",
-      "headline": "Chybíte nám, máte tu dopravu zdarma",
-      "rationale": "E-mail je levný a cílený. Bezplatná doprava sníží bariéru nákupu u zákazníků neaktivních devět měsíců.",
+      "offer": "Kód ZPĚTVÍTÁZKY pro slevu 15 % na vše",
+      "headline": "Chybíte nám. Otevřete si svou slevu.",
+      "rationale": "Cílená e-mailová reakce s nízkým nákladem efektivně naváže kontakt s odchozími zákazníky a zvýší konverzi před sezónním vrcholem.",
       "priority": "medium",
       "_source": "qwen3.6:35b",
       "estimate": {
         "assumed_response_rate": 0.08,
-        "expected_responders": 45,
-        "est_incremental_revenue": 55462
+        "expected_responders": 65,
+        "est_incremental_revenue": 88231
       },
       "segment": "At-risk",
       "llm_priority": "high"
@@ -332,24 +332,24 @@
       "_source": "fallback",
       "estimate": {
         "assumed_response_rate": 0.04,
-        "expected_responders": 34,
-        "est_incremental_revenue": 25418
+        "expected_responders": 31,
+        "est_incremental_revenue": 21440
       },
       "segment": "Dormant",
       "llm_priority": "medium"
     }
   ],
   "validation": {
-    "kmeans_silhouette": 0.487,
-    "rfm_kmeans_ari": 0.489,
+    "kmeans_silhouette": 0.485,
+    "rfm_kmeans_ari": 0.557,
     "n_customers": 3997,
     "segment_sizes": {
-      "Champions": 835,
-      "Loyal": 1118,
-      "At-risk": 562,
-      "New": 627,
-      "Dormant": 855
+      "Champions": 771,
+      "Loyal": 884,
+      "At-risk": 815,
+      "New": 743,
+      "Dormant": 784
     }
   },
-  "runtime_secs": 900.7
+  "runtime_secs": 5489.9
 }

@@ -69,7 +69,16 @@ mapping, not new analytics code. That's the seam the whole system pivots on.
 - **`loader.py`** — canonical schema + cleaning (drops cancellations/returns, null
   customers, non-positive prices). Adapters: `load_uci`, `load_milan` (real e-shop
   export: Czech decimal comma, line-type rows, status filtering), `load_csv`,
-  and `load_dataframe` (the seam every connector funnels through).
+  and `load_dataframe` (the seam every connector funnels through). Tolerates
+  missing columns: no order id → one order per customer per day, no quantity → 1,
+  no unit price → derived from an order-total column. Dates: EU/US order detected,
+  Excel serials and unix epochs handled, bad rows dropped instead of crashing.
+- **`sniff.py`** — reads whatever the upload actually is: encoding cascade
+  (UTF-8 / BOM / cp1250 / latin-1), delimiter sniffing (`,` `;` tab `|`),
+  report-title preamble skipping, duplicate/empty header repair, `.xlsx`/`.xls`.
+  Anything that looks remotely like sales data should survive
+  (`tests/test_messy.py` is the contract: 12 hostile fixtures of the same data
+  must all converge to the same numbers).
 - **`features.py`** — per-customer **RFM** + behavioral features (avg order value,
   basket size, tenure, product diversity, inter-purchase gap); log-damped for clustering.
 - **`segment.py`** — **two algorithms**: quantile RFM scoring (interpretable, named)
