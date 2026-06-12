@@ -17,8 +17,13 @@ from seg.util import atomic_write_json
 
 MAILINGS_DIR = "out/mailings"
 
+# someone has to sign the e-mail; the owner sets the real one in
+# config output.signature (or the /setup text box) — this is the
+# obviously-edit-me placeholder
+DEFAULT_SIGNATURE = {"cs": "Váš tým", "en": "Your team"}
 
-def _body(card: dict, lang: str, currency: str) -> str:
+
+def _body(card: dict, lang: str, currency: str, signature: str) -> str:
     greet = "Dobrý den," if lang == "cs" else "Hello,"
     lines = [greet, "", card.get("headline", "")]
     if card.get("offer") and card["offer"] != card.get("headline"):
@@ -28,11 +33,13 @@ def _body(card: dict, lang: str, currency: str) -> str:
         lines += ["", (f"Váš kód: {d['code']}" if lang == "cs"
                        else f"Your code: {d['code']}")]
     lines += ["", ("Děkujeme, že u nás nakupujete." if lang == "cs"
-                   else "Thank you for shopping with us.")]
+                   else "Thank you for shopping with us."),
+              "", signature]
     return "\n".join(lines)
 
 
-def build_mailing(card: dict, recipients: list, lang="en", currency="£") -> dict:
+def build_mailing(card: dict, recipients: list, lang="en", currency="£",
+                  signature: str | None = None) -> dict:
     """Campaign card + recipient rows -> a self-contained mailing artifact a
     mailer can consume directly (recipients carry e-mail + name, not just ids)."""
     rows = []
@@ -45,12 +52,15 @@ def build_mailing(card: dict, recipients: list, lang="en", currency="£") -> dic
             email = cid
         rows.append({"customer_id": cid, "email": email,
                      "name": str(r.get("name") or "")})
+    signature = (signature or "").strip() or DEFAULT_SIGNATURE.get(
+        lang, DEFAULT_SIGNATURE["en"])
     return {
         "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "segment": card.get("segment"),
         "channel": card.get("channel"),
         "subject": card.get("headline", ""),
-        "body_text": _body(card, lang, currency),
+        "signature": signature,
+        "body_text": _body(card, lang, currency, signature),
         "discount": card.get("discount"),
         "estimate": card.get("estimate"),
         "language": lang,

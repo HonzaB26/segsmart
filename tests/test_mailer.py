@@ -260,3 +260,25 @@ def test_invented_discount_currency_first():
     assert has_invented_discount({"offer": "Doprava zdarma nad Kč3000 a poukaz Kč500."})
     assert has_invented_discount({"offer": "€50 voucher for you"})
     assert not has_invented_discount({"offer": "VIP přístup k novinkám a dárek"})
+
+
+# --- someone signs the e-mail --------------------------------------------------
+
+def test_signature_default_per_language():
+    m_cs = build_mailing(CARD, [{"id": "a@x.cz"}], lang="cs", currency="Kč")
+    m_en = build_mailing(CARD, [{"id": "a@x.cz"}], lang="en", currency="£")
+    assert m_cs["body_text"].rstrip().endswith("Váš tým")
+    assert m_en["body_text"].rstrip().endswith("Your team")
+
+
+def test_signature_from_config():
+    m = build_mailing(CARD, [{"id": "a@x.cz"}], lang="cs", currency="Kč",
+                      signature="Tým Drogerie U Lípy")
+    assert m["body_text"].rstrip().endswith("Tým Drogerie U Lípy")
+    assert m["signature"] == "Tým Drogerie U Lípy"
+
+
+def test_signature_blank_falls_back_to_default():
+    m = build_mailing(CARD, [{"id": "a@x.cz"}], lang="cs", currency="Kč",
+                      signature="   ")
+    assert m["body_text"].rstrip().endswith("Váš tým")

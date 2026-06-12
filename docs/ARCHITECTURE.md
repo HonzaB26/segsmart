@@ -117,7 +117,9 @@ The card the model drafts is copy, not commerce. The owner then optionally
 **adds a real discount** (percent / amount / free shipping + the code from
 their own shop system) — `apply_discount` regenerates the copy around it (LLM
 rewrite with the code protected, deterministic template as fallback). **Launch**
-turns the approved card into a mailing artifact: subject, assembled body and
+turns the approved card into a mailing artifact: subject, assembled body
+(signed with `output.signature` from the config — editable in the /setup text
+box, language-appropriate default otherwise) and
 the segment's recipient list — each recipient with **e-mail and name** (from
 mapped contact columns, or the customer id itself when it is an e-mail), so a
 mailer can consume the file directly; the UI also offers the same list as an

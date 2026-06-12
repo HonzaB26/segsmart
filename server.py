@@ -163,9 +163,12 @@ class H(BaseHTTPRequestHandler):
                 if not recipients:
                     return self._send(400, json.dumps(
                         {"error": "no recipients — run a segmentation first"}))
+                cfg_now = cfgmod.load_config()
                 mailing = build_mailing(card, recipients,
                                         lang=req.get("language", "en"),
-                                        currency=req.get("currency", "£"))
+                                        currency=req.get("currency", "£"),
+                                        signature=(cfg_now.get("output") or {})
+                                        .get("signature"))
                 # explicit confirmation required — launch can hit a live mailer
                 # webhook; one accidental click must never mail a whole segment.
                 # The unconfirmed call returns the EXACT e-mail for review
@@ -178,10 +181,10 @@ class H(BaseHTTPRequestHandler):
                          "recipients": len(mailing["recipients"]),
                          "deliverable": mailing["deliverable"],
                          "webhook_configured": bool(
-                             (cfgmod.load_config().get("mailer") or {})
+                             (cfg_now.get("mailer") or {})
                              .get("webhook_url"))}, ensure_ascii=False))
                 path = save_mailing(mailing)
-                report = deliver(mailing, (cfgmod.load_config().get("mailer")))
+                report = deliver(mailing, cfg_now.get("mailer"))
                 return self._send(200, json.dumps(
                     {"saved": path, "recipients": len(mailing["recipients"]),
                      "deliverable": mailing["deliverable"],

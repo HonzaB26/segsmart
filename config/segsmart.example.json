@@ -29,7 +29,7 @@
     }
   },
 
-  "output": { "currency": "Kč", "language": "cs" },
+  "output": { "currency": "Kč", "language": "cs", "signature": "Tým Drogerie U Lípy" },
   "ai": { "use_llm": true },
 
   "_mailer_comment": "optional: campaign Launch POSTs the mailing JSON here (n8n / Zapier / your own SMTP script); without it the artifact is just saved to out/mailings/",
