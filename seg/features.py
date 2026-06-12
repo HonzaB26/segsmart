@@ -17,12 +17,17 @@ def build_features(df: pd.DataFrame, snapshot=None) -> pd.DataFrame:
     if snapshot is None:
         snapshot = df.order_date.max() + pd.Timedelta(days=1)
 
+    # real product lines only (excludes coupons/gifts) for basket size & diversity;
+    # money still uses ALL lines so discounts net into revenue
+    prod = df[df["is_product"]] if "is_product" in df.columns else df
+
     order = df.groupby("order_id").agg(
         customer_id=("customer_id", "first"),
         order_date=("order_date", "first"),
         order_value=("line_value", "sum"),
-        order_items=("quantity", "sum"),
     ).reset_index()
+    order["order_items"] = order["order_id"].map(
+        prod.groupby("order_id").quantity.sum()).fillna(0)
 
     g = order.groupby("customer_id")
     feat = pd.DataFrame({
@@ -38,8 +43,9 @@ def build_features(df: pd.DataFrame, snapshot=None) -> pd.DataFrame:
         "last_seen":        g.order_date.max(),
     })
 
-    # product diversity + dominant country need the line-item frame
-    feat["distinct_products"] = df.groupby("customer_id").product.nunique()
+    # product diversity (real products only) + dominant country
+    feat["distinct_products"] = prod.groupby("customer_id").product.nunique()
+    feat["distinct_products"] = feat["distinct_products"].fillna(0)
     feat["country"] = df.groupby("customer_id").country.agg(
         lambda s: s.value_counts().idxmax())
 

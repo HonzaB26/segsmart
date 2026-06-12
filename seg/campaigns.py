@@ -78,14 +78,7 @@ def _ollama(prompt: str, system: str, timeout=420) -> str | None:
         return None
 
 
-def _extract_json(raw: str) -> dict:
-    """Pull a JSON object from model output (handles ```json fences, think tags)."""
-    import re
-    if not raw:
-        raise ValueError("empty")
-    m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
-    blob = m.group(1) if m else raw[raw.index("{"):raw.rindex("}") + 1]
-    return json.loads(blob)
+from seg.util import extract_json as _extract_json  # noqa: E402  shared robust parser
 
 
 def _fallback(seg: str, lang="en") -> dict:

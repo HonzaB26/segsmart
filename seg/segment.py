@@ -16,38 +16,43 @@ SEGMENTS = ["Champions", "Loyal", "At-risk", "New", "Dormant"]
 
 
 def _score(series: pd.Series, reverse=False) -> pd.Series:
-    """Quintile 1..5. reverse=True for recency (fewer days = better)."""
-    try:
-        q = pd.qcut(series.rank(method="first"), 5, labels=[1, 2, 3, 4, 5])
-    except ValueError:
-        q = pd.qcut(series.rank(method="first"), 5, labels=False, duplicates="drop") + 1
-    q = q.astype(int)
+    """Tie-aware quintile 1..5: equal values always get the SAME score (no
+    arbitrary row-order splitting). Degenerate columns collapse to a neutral 3.
+    reverse=True for recency (fewer days = better)."""
+    pct = series.rank(pct=True, method="average")     # ties share a percentile
+    q = np.ceil(pct * 5).clip(1, 5).astype(int)
     return (6 - q) if reverse else q
 
 
 def rfm_segments(feat: pd.DataFrame) -> pd.DataFrame:
-    """Add R/F/M scores and a named 5-bucket `segment` column."""
+    """Add R/F/M scores and a named 5-bucket `segment` column.
+
+    Rules use all three of R/F/M plus tenure, in priority order:
+      Champions  recent + frequent + high-spend
+      Loyal      frequent OR high-spend, still reasonably recent
+      New        recent, few orders, short tenure (genuinely new)
+      At-risk    lapsed but was frequent/valuable (win-back)
+      Dormant    lapsed and low value
+    """
     f = feat.copy()
     f["R"] = _score(f["recency"], reverse=True)   # recent -> 5
     f["F"] = _score(f["frequency"])
     f["M"] = _score(f["monetary"])
 
-    young = f["tenure_days"] <= 30                  # first & last order within a month
-
     def assign(r):
-        R, F = r["R"], r["F"]
-        if R >= 4 and F >= 4:
+        R, F, M, tenure = r["R"], r["F"], r["M"], r["tenure_days"]
+        if R >= 4 and F >= 4 and M >= 4:
             return "Champions"
-        if F >= 4 or (R >= 3 and F >= 3):
+        if R >= 3 and (F >= 4 or M >= 4):
             return "Loyal"
-        if R >= 4 and F <= 2 and (r["tenure_days"] <= 30):
+        if R >= 4 and F <= 2 and tenure <= 60:
             return "New"
-        if R <= 2 and F >= 3:
-            return "At-risk"          # were frequent, gone quiet -> win-back
+        if R <= 2 and (F >= 3 or M >= 3):
+            return "At-risk"          # were frequent/valuable, gone quiet
         if R <= 2:
             return "Dormant"
-        # middling recency, low frequency: recent-ish newcomers vs fading
-        return "New" if R >= 4 else "At-risk"
+        # middle band (R==3, modest F/M): newcomer settling in vs steady regular
+        return "New" if (F <= 2 and tenure <= 90) else "Loyal"
 
     f["segment"] = f.apply(assign, axis=1)
     f["rfm_cell"] = f["R"].astype(str) + f["F"].astype(str) + f["M"].astype(str)
@@ -55,13 +60,21 @@ def rfm_segments(feat: pd.DataFrame) -> pd.DataFrame:
 
 
 def kmeans_segments(feat: pd.DataFrame, k=5, seed=42):
-    """Unsupervised clustering on scaled features. Returns (labels, silhouette, model)."""
+    """Unsupervised clustering on scaled features. Returns (labels, silhouette, model).
+    Adapts k to small datasets and returns silhouette=None when it's undefined."""
     from sklearn.cluster import KMeans
     from sklearn.metrics import silhouette_score
     from seg.features import model_matrix
+    n = len(feat)
     X, cols = model_matrix(feat)
+    if n < 3:                                          # too few to cluster meaningfully
+        return np.zeros(n, dtype=int), None, None
+    k = max(2, min(k, n - 1))                          # k must be < n
     km = KMeans(n_clusters=k, random_state=seed, n_init=10).fit(X)
-    sil = float(silhouette_score(X, km.labels_, sample_size=min(3000, len(X)), random_state=seed))
+    n_clusters = len(set(km.labels_))
+    sil = (float(silhouette_score(X, km.labels_, sample_size=min(3000, n),
+                                  random_state=seed))
+           if 2 <= n_clusters < n else None)           # silhouette needs 2..n-1 clusters
     return km.labels_, sil, km
 
 

@@ -8,6 +8,7 @@ import json, os, time
 import pandas as pd
 
 from seg.loader import load_uci, load_csv, load_milan, summary
+from seg.util import NoValidData
 from seg.features import build_features
 from seg.segment import (rfm_segments, kmeans_segments, agreement,
                          segment_profiles, SEGMENTS)
@@ -30,6 +31,11 @@ def run(source="uci", path=None, currency="£", use_llm=True, out="out/result.js
         df = load_milan(path or "data/bq_export.csv")
     else:
         df = load_csv(path, mapping, decimal=decimal)
+
+    if df is None or df.empty:
+        raise NoValidData("no usable rows after cleaning — check the file or the column mapping")
+    if df["customer_id"].nunique() < 2:
+        raise NoValidData("need at least 2 distinct customers to segment")
 
     meta = summary(df)
     meta["currency"] = currency
@@ -79,7 +85,7 @@ def run(source="uci", path=None, currency="£", use_llm=True, out="out/result.js
         },
         "campaigns": cards,
         "validation": {
-            "kmeans_silhouette": round(sil, 3),
+            "kmeans_silhouette": round(sil, 3) if sil is not None else None,
             "rfm_kmeans_ari": round(ari, 3),
             "n_customers": meta["customers"],
             "segment_sizes": {s["name"]: s["customers"] for s in segments},
@@ -87,11 +93,15 @@ def run(source="uci", path=None, currency="£", use_llm=True, out="out/result.js
         "runtime_secs": round(time.time() - t0, 1),
     }
 
-    os.makedirs(os.path.dirname(out), exist_ok=True)
-    with open(out, "w") as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
-    print(f"wrote {out} in {result['runtime_secs']}s "
-          f"({'LLM' if use_llm else 'no-LLM'}, {meta['customers']} customers)")
+    # out=None -> don't persist (used for uploaded customer data, which must not
+    # be written to the shared demo file on disk)
+    if out:
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        with open(out, "w") as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
+    print(f"computed in {result['runtime_secs']}s "
+          f"({'LLM' if use_llm else 'no-LLM'}, {meta['customers']} customers)"
+          + (f", wrote {out}" if out else ", not persisted"))
     return result
 
 

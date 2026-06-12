@@ -151,6 +151,8 @@
 
 <script>
 const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,
+  c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtMoney = (n, c) => c === 'Kč'
   ? new Intl.NumberFormat('cs-CZ',{maximumFractionDigits:0}).format(n) + ' Kč'
   : c + new Intl.NumberFormat('en-GB',{maximumFractionDigits:0}).format(n);
@@ -195,7 +197,7 @@ function render(r){
     `<text x="${CX}" y="${CY-4}" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">${segs.length}</text>`+
     `<text x="${CX}" y="${CY+16}" text-anchor="middle" font-size="11" fill="#a9a7d4">segments</text>`;
   $('#legend').innerHTML = segs.map(s=>
-    `<div><span class="dot" style="background:${s.color}"></span>${s.name}<span class="pc">${s.share_pct}%</span></div>`).join('');
+    `<div><span class="dot" style="background:${s.color}"></span>${esc(s.name)}<span class="pc">${s.share_pct}%</span></div>`).join('');
 
   // revenue bars
   const maxRev = Math.max(...segs.map(s=>s.revenue));
@@ -203,21 +205,22 @@ function render(r){
     const h = Math.max(3, s.revenue/maxRev*140);
     return `<div class="bar"><div class="amt" style="color:${s.color}">${fmtMoney(s.revenue,c)}</div>`
       + `<div class="col" style="height:${h}px;background:${s.color}"></div>`
-      + `<div class="cap">${s.name}</div></div>`;
+      + `<div class="cap">${esc(s.name)}</div></div>`;
   }).join('');
 
   // campaigns
   $('#camps').innerHTML = r.campaigns.map(cp=>{
     const e=cp.estimate;
+    const pri = ['high','medium','low'].includes(cp.priority)?cp.priority:'medium';
     return `<div class="camp" style="border-left-color:${(r.segments.find(s=>s.name===cp.segment)||{}).color||'#888'}">
-      <div class="top"><span class="seg">${cp.segment}</span>
-        <span class="pri ${cp.priority}">${cp.priority}</span></div>
-      <div class="head">“${cp.headline}”</div>
-      <div class="det">${cp.channel} · ${cp.offer}</div>
-      <div class="det" style="margin-top:3px">${cp.rationale||''}</div>
+      <div class="top"><span class="seg">${esc(cp.segment)}</span>
+        <span class="pri ${pri}">${esc(pri)}</span></div>
+      <div class="head">“${esc(cp.headline)}”</div>
+      <div class="det">${esc(cp.channel)} · ${esc(cp.offer)}</div>
+      <div class="det" style="margin-top:3px">${esc(cp.rationale||'')}</div>
       <div class="est">≈ ${e.expected_responders} responders → ${fmtMoney(e.est_incremental_revenue,c)} `
       + `(@${Math.round(e.assumed_response_rate*100)}% response)</div>
-      <span class="src">${cp._source}</span></div>`;
+      <span class="src">${esc(cp._source)}</span></div>`;
   }).join('');
   const llmName = (r.campaigns[0]||{})._source||'';
   $('#llmtag').textContent = llmName.includes('fallback')?'· rule-based':'· '+llmName+' (on-device)';
@@ -237,7 +240,7 @@ function render(r){
   // validation
   const v=r.validation;
   $('#validation').innerHTML = [
-    [v.kmeans_silhouette, 'KMeans silhouette', 'cluster separation'],
+    [v.kmeans_silhouette==null?'n/a':v.kmeans_silhouette, 'KMeans silhouette', 'cluster separation'],
     [v.rfm_kmeans_ari, 'RFM ↔ KMeans (ARI)', 'rules vs geometry agreement'],
     [v.n_customers.toLocaleString(), 'customers segmented', 'full base'],
   ].map(([b,l,s])=>`<div class="val"><b>${b}</b><small>${l}</small><small>${s}</small></div>`).join('');
@@ -279,7 +282,7 @@ $('#analyze').onclick = async ()=>{
 function buildMapper(d){
   const header=d.header||[];
   const opt=sel=>['<option value="">— none —</option>']
-    .concat(header.map(h=>`<option ${h===sel?'selected':''}>${h}</option>`)).join('');
+    .concat(header.map(h=>`<option value="${esc(h)}" ${h===sel?'selected':''}>${esc(h)}</option>`)).join('');
   $('#maprows').innerHTML = CANON_FIELDS.map(([k,label,req])=>
     `<tr><td style="padding:4px 8px">${label}${req?' <span style="color:var(--red)">*</span>':''}</td>`+
     `<td style="padding:4px 8px"><select data-k="${k}" style="background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px;min-width:180px">`+

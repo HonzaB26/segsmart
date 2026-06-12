@@ -70,9 +70,12 @@ def _to_num(s: pd.Series, decimal: str = ".") -> pd.Series:
     formats ('1 234,56' / '1.234,56' → 1234.56)."""
     if pd.api.types.is_numeric_dtype(s):
         return s
-    x = s.astype(str).str.replace(r"[\s ]", "", regex=True)
+    # drop everything that isn't a digit, separator or sign (currency, spaces, letters)
+    x = s.astype(str).str.replace(r"[^\d,.\-]", "", regex=True)
     if decimal == ",":
         x = x.str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+    else:
+        x = x.str.replace(",", "", regex=False)        # strip US thousands separators
     return pd.to_numeric(x, errors="coerce")
 
 

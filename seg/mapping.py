@@ -11,6 +11,8 @@ product (optional), country (optional).
 from __future__ import annotations
 import json, os, re, urllib.request
 
+from seg.util import extract_json
+
 OLLAMA = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 MAP_MODEL = os.environ.get("SEG_MAP_MODEL", "gemma4:e4b")   # fast; interactive
 
@@ -86,7 +88,7 @@ def _llm(header: list[str], samples: list[list], timeout=90) -> dict | None:
                                  headers={"Content-Type": "application/json"})
     try:
         raw = json.load(urllib.request.urlopen(req, timeout=timeout)).get("response", "")
-        d = json.loads(raw)
+        d = extract_json(raw)
         d["source"] = MAP_MODEL
         return d
     except Exception as e:

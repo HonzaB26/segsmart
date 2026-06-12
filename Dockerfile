@@ -17,12 +17,17 @@ COPY gen/ ./gen/
 COPY pipeline.py server.py index.html docker-entrypoint.sh ./
 # baked demo data so the dashboard works out-of-box (real exports come via
 # DB connectors or the UI upload — never baked into the shipped image)
-COPY data/synthetic_milan.csv ./data/
+COPY data/sample_eshop.csv ./data/
 COPY out/result.json ./out/
 
-RUN chmod +x docker-entrypoint.sh
+# run as an unprivileged user
+RUN chmod +x docker-entrypoint.sh \
+ && useradd -m -u 10001 segsmart \
+ && chown -R segsmart:segsmart /app
+USER segsmart
 
 ENV SEG_PORT=8099 \
+    SEG_HOST=0.0.0.0 \
     OLLAMA_URL=http://ollama:11434 \
     SEG_LLM_MODEL=gemma4:e4b \
     SEG_AUTOPULL=0

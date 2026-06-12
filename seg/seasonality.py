@@ -25,16 +25,19 @@ def seasonality_index(df: pd.DataFrame) -> pd.DataFrame:
     """
     g = df.copy()
     g["moy"] = g["order_date"].dt.month
-    g["day"] = g["order_date"].dt.normalize()
     rev = g.groupby("moy").line_value.sum()
-    # normalise by DAYS OBSERVED in each month-of-year — so a truncated month
-    # (e.g. data ending mid-December) is compared as revenue/day, not deflated.
-    days = g.groupby("moy").day.nunique()
-    avg_rev = rev / days
+    # normalise by CALENDAR days the data actually spans in each month-of-year
+    # (not just days with sales) — so partial edge months aren't deflated and a
+    # sparse month with one big day can't look seasonally strong.
+    cal = pd.date_range(g["order_date"].min().normalize(),
+                        g["order_date"].max().normalize(), freq="D")
+    exposure = pd.Series(cal.month).value_counts()                 # calendar days per moy
+    moys = sorted(exposure.index)
+    avg_rev = (rev.reindex(moys).fillna(0) / exposure.reindex(moys))   # 0 for no-sale months
     idx = (avg_rev / avg_rev.mean() * 100).round(0)
     names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    out = pd.DataFrame({"month_num": idx.index,
+    out = pd.DataFrame({"month_num": list(idx.index),
                         "month": [names[i - 1] for i in idx.index],
                         "index": idx.values.astype(int)})
     return out.sort_values("month_num").reset_index(drop=True)

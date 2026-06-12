@@ -12,9 +12,26 @@ A `mapping` is {canonical_name: source_column}. Canonical names:
 (line_value is derived as quantity*unit_price if not provided).
 """
 from __future__ import annotations
+import re
+
 import pandas as pd
 
 from seg.loader import load_dataframe
+
+_WRITE = re.compile(r"\b(insert|update|delete|drop|alter|truncate|create|replace|"
+                    r"grant|merge|attach)\b", re.IGNORECASE)
+
+
+def _assert_readonly(query: str) -> None:
+    """Reject anything that isn't a single read query. Defence in depth — always
+    also use read-only DB credentials."""
+    q = query.strip().rstrip(";")
+    if ";" in q:
+        raise ValueError("only a single statement is allowed")
+    if not re.match(r"^\s*(select|with)\b", q, re.IGNORECASE):
+        raise ValueError("only SELECT/WITH queries are allowed")
+    if _WRITE.search(q):
+        raise ValueError("write/DDL keywords are not allowed in a connector query")
 
 
 # --- Generic SQL (MySQL/MariaDB → Shoptet, WooCommerce, PrestaShop, Magento;
@@ -28,6 +45,7 @@ def sql_connector(connection_url: str, query: str, mapping: dict | None = None) 
       sqlite:///path/to/shop.db
     query: SELECT returning order-line rows (any column names; map them).
     """
+    _assert_readonly(query)
     from sqlalchemy import create_engine                    # lazy
     engine = create_engine(connection_url)
     with engine.connect() as conn:
@@ -43,6 +61,7 @@ def bigquery_connector(query: str, mapping: dict | None = None,
     Auth: set GOOGLE_APPLICATION_CREDENTIALS, or pass credentials_path to a
     service-account JSON. Reads stay read-only.
     """
+    _assert_readonly(query)
     from google.cloud import bigquery                       # lazy
     if credentials_path:
         client = bigquery.Client.from_service_account_json(credentials_path, project=project)
