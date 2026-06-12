@@ -41,17 +41,19 @@ def test_hand_edited_file_is_picked_up(tmp_path, csv_path):
     p = tmp_path / "segsmart.json"
     p.write_text(json.dumps({"source": {"type": "file", "path": csv_path}}))
     cfg = cfgmod.load_config(str(p))
-    df = cfgmod.fetch_dataframe(cfg["source"])
+    df = cfgmod.fetch_dataframe(cfg["source"], trusted_paths=True)
     assert df.customer_id.nunique() == 5
 
 
 def test_env_expansion(monkeypatch, csv_path):
     monkeypatch.setenv("ORDERS_FILE", csv_path)
-    df = cfgmod.fetch_dataframe({"type": "file", "path": "${ORDERS_FILE}"})
+    df = cfgmod.fetch_dataframe({"type": "file", "path": "${ORDERS_FILE}"},
+                            trusted_paths=True)
     assert len(df) == 40
     # unknown vars stay literal (and then fail loudly as a missing file)
     with pytest.raises(NoValidData):
-        cfgmod.fetch_raw({"type": "file", "path": "${NO_SUCH_VAR_XYZ}"})
+        cfgmod.fetch_raw({"type": "file", "path": "${NO_SUCH_VAR_XYZ}"},
+                         trusted_paths=True)
 
 
 def test_fetch_file_with_mapping(tmp_path):
@@ -61,7 +63,7 @@ def test_fetch_file_with_mapping(tmp_path):
     df = cfgmod.fetch_dataframe({
         "type": "file", "path": str(p), "decimal": ",",
         "mapping": {"customer_id": "Kunde", "order_date": "Datum",
-                    "line_value": "Summe"}})
+                    "line_value": "Summe"}}, trusted_paths=True)
     assert df.customer_id.nunique() == 4
     assert (df.line_value > 0).all()
 

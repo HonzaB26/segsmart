@@ -9,15 +9,25 @@ Every card has a deterministic fallback so the pipeline never breaks if the
 model is slow/offline; the LLM only enriches.
 """
 from __future__ import annotations
-import json, os, urllib.request
+import json, os, re, urllib.request
 
 OLLAMA = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 MODEL = os.environ.get("SEG_LLM_MODEL", "gemma4:26b")   # quality model for campaign copy
+
+# The model writes COPY, never commercial terms: no invented voucher codes
+# (qwen happily fabricates Czech-lettered codes nobody's shop accepts).
+# Discounts/codes are added by the OWNER via apply_discount().
+NO_CODES_EN = ("NEVER invent a discount code, voucher code or coupon code. "
+               "Do not write any specific code string. The shop owner adds "
+               "real codes separately.")
+NO_CODES_CS = ("NIKDY si nevymýšlej slevový kód, kód kupónu ani konkrétní "
+               "kódové slovo. Skutečné kódy doplní majitel obchodu sám.")
 
 SYSTEM_EN = (
     "You are a pragmatic retention-marketing strategist for a small business. "
     "Given ONE customer segment's statistics, design ONE concrete campaign. "
     "Be specific and realistic for an SME with a small budget. "
+    + NO_CODES_EN + " "
     "Respond with STRICT JSON only, no prose, with keys: "
     "objective (<=8 words), channel (Email|SMS|Email+SMS|Push|Direct mail), "
     "offer (<=10 words, concrete), headline (<=8 words, the customer-facing hook), "
@@ -27,7 +37,8 @@ SYSTEM_EN = (
 SYSTEM_CS = (
     "Jsi praktický marketingový stratég pro malý e-shop. Pro JEDEN zákaznický "
     "segment navrhni JEDNU konkrétní kampaň. Buď konkrétní a realistický pro malou "
-    "firmu s malým rozpočtem. Odpověz POUZE validním JSON, bez úvodu, s klíči: "
+    "firmu s malým rozpočtem. " + NO_CODES_CS + " "
+    "Odpověz POUZE validním JSON, bez úvodu, s klíči: "
     "objective (cíl, max 8 slov), channel (E-mail|SMS|E-mail+SMS|Push|Leták), "
     "offer (nabídka, max 10 slov, konkrétní), headline (titulek pro zákazníka, max 8 slov), "
     "rationale (zdůvodnění, max 20 slov), priority (high|medium|low). "
@@ -36,19 +47,20 @@ SYSTEM_CS = (
 )
 
 # What each segment generally needs — steers the model + powers the fallback.
+# Offers stay code-free: the owner introduces a real code via apply_discount().
 PLAYBOOK = {
     "Champions": ("Reward & upsell; protect the relationship", "VIP early access + bundle", "Email"),
     "Loyal":     ("Increase frequency; grow basket", "Loyalty points 2x this month", "Email"),
-    "At-risk":   ("Win back before they churn", "15% off next order, 14 days", "Email+SMS"),
+    "At-risk":   ("Win back before they churn", "A 14-day comeback offer", "Email+SMS"),
     "New":       ("Drive the crucial 2nd purchase", "Free shipping on order #2", "Email"),
-    "Dormant":   ("Reactivate or let go cheaply", "We miss you – 20% comeback code", "Email"),
+    "Dormant":   ("Reactivate or let go cheaply", "We miss you – a welcome-back gift", "Email"),
 }
 PLAYBOOK_CS = {
     "Champions": ("Odměnit a rozšířit nákup; udržet vztah", "VIP přístup k novinkám + dárek", "E-mail"),
     "Loyal":     ("Zvýšit frekvenci; větší košík", "Dvojnásobné věrnostní body", "E-mail"),
-    "At-risk":   ("Získat zpět, než odejdou", "15 % sleva na další nákup, 14 dní", "E-mail+SMS"),
+    "At-risk":   ("Získat zpět, než odejdou", "Návratová nabídka na 14 dní", "E-mail+SMS"),
     "New":       ("Podpořit klíčový druhý nákup", "Doprava zdarma na druhou objednávku", "E-mail"),
-    "Dormant":   ("Reaktivovat, nebo levně opustit", "Chybíte nám – kód na 20 % zpět", "E-mail"),
+    "Dormant":   ("Reaktivovat, nebo levně opustit", "Chybíte nám – dárek k návratu", "E-mail"),
 }
 
 
@@ -79,6 +91,38 @@ def _ollama(prompt: str, system: str, timeout=420) -> str | None:
 
 
 from seg.util import extract_json as _extract_json  # noqa: E402  shared robust parser
+
+# 'kód JARO15' / 'use code SAVE20' phrases, and bare SHOUTING+digits tokens —
+# the model invents codes no shop accepts, despite the prompt. Belt+braces.
+_CODE_PHRASE = re.compile(
+    r"\s*(?:s\s+)?(?:kódem|kódu|kód|kupónem|kupón|voucher|coupon|(?:use\s+|with\s+)?code)"
+    r"\s*[:\"'„]?\s*[A-Z0-9ÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ_-]{3,}[\"'“]?", re.IGNORECASE)
+_BARE_CODE = re.compile(r"\b(?=[A-Z0-9ÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ-]*\d)[A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]"
+                        r"[A-Z0-9ÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ-]{3,}\b")
+_TEXT_FIELDS = ("objective", "offer", "headline", "rationale")
+
+
+def strip_voucher_codes(text: str, keep: str | None = None) -> str:
+    """Remove model-invented voucher codes from copy. `keep` survives —
+    that's the real code the owner introduced via apply_discount()."""
+    if not text:
+        return text
+    sentinel = "\x00KEEP\x00"
+    if keep:
+        text = text.replace(keep, sentinel)
+    text = _CODE_PHRASE.sub("", text)
+    text = _BARE_CODE.sub("", text)
+    text = re.sub(r"\s{2,}", " ", text).strip(" ,;:–-")
+    if keep:
+        text = text.replace(sentinel, keep)
+    return text
+
+
+def _sanitize_card(c: dict, keep: str | None = None) -> dict:
+    for k in _TEXT_FIELDS:
+        if isinstance(c.get(k), str):
+            c[k] = strip_voucher_codes(c[k], keep=keep)
+    return c
 
 
 def _fallback(seg: str, lang="en") -> dict:
@@ -113,7 +157,7 @@ def card_for_segment(seg_name: str, prof_row: dict, hook: dict, use_llm=True,
         )
         raw = _ollama(prompt, SYSTEM_CS if lang == "cs" else SYSTEM_EN)
         try:
-            c = _extract_json(raw)
+            c = _sanitize_card(_extract_json(raw))   # no invented voucher codes
             c.setdefault("priority", "medium")
             c["_source"] = MODEL
         except Exception:
@@ -139,6 +183,77 @@ def _estimate(seg: str, p: dict) -> dict:
     return {"assumed_response_rate": resp,
             "expected_responders": responders,
             "est_incremental_revenue": est_rev}
+
+
+def _discount_phrase(discount: dict, lang: str, currency: str) -> str:
+    """Human wording for an owner-specified discount, used by the fallback
+    rewrite and shown in the mailing body."""
+    kind = discount.get("kind", "percent")
+    value = discount.get("value")
+    code = discount.get("code", "")
+    if lang == "cs":
+        if kind == "free_shipping":
+            base = "doprava zdarma"
+        elif kind == "amount":
+            base = f"sleva {value} {currency}"
+        else:
+            base = f"sleva {value} %"
+        return f"{base} s kódem {code}" if code else base
+    if kind == "free_shipping":
+        base = "free shipping"
+    elif kind == "amount":
+        base = f"{currency}{value} off"
+    else:
+        base = f"{value}% off"
+    return f"{base} with code {code}" if code else base
+
+
+def apply_discount(card: dict, discount: dict, lang="en", currency="£",
+                   use_llm=True) -> dict:
+    """Rewrite a card's copy around an OWNER-specified discount (kind, value,
+    code). The code comes from the shop's real system — never from the model.
+    LLM rewrite when available, deterministic template otherwise."""
+    card = dict(card)
+    phrase = _discount_phrase(discount, lang, currency)
+    code = discount.get("code") or None
+    rewritten = None
+    if use_llm:
+        sysmsg = SYSTEM_CS if lang == "cs" else SYSTEM_EN
+        prompt = (
+            f"Rewrite this campaign to feature exactly this offer: {phrase}.\n"
+            f"Use the code {code} verbatim if given; do not invent any other code.\n"
+            f"Current campaign JSON:\n{json.dumps({k: card.get(k) for k in _TEXT_FIELDS}, ensure_ascii=False)}\n"
+            f"Segment: {card.get('segment')}\nChannel stays: {card.get('channel')}\n"
+            "Return the same JSON keys."
+        ) if lang != "cs" else (
+            f"Přepiš tuto kampaň tak, aby nabízela přesně: {phrase}.\n"
+            f"Kód {code} použij doslova, žádný jiný kód nevymýšlej.\n"
+            f"Současná kampaň (JSON):\n{json.dumps({k: card.get(k) for k in _TEXT_FIELDS}, ensure_ascii=False)}\n"
+            f"Segment: {card.get('segment')}\nKanál zůstává: {card.get('channel')}\n"
+            "Vrať JSON se stejnými klíči."
+        )
+        raw = _ollama(prompt, sysmsg)
+        if raw:
+            try:
+                rewritten = _sanitize_card(_extract_json(raw), keep=code)
+            except Exception:
+                rewritten = None
+    if rewritten:
+        for k in _TEXT_FIELDS:
+            if isinstance(rewritten.get(k), str) and rewritten[k]:
+                card[k] = rewritten[k]
+        card["_source"] = MODEL
+    else:                                           # deterministic rewrite
+        card["offer"] = phrase[0].upper() + phrase[1:]
+        card["headline"] = card["offer"]
+        card["_source"] = "owner-discount"
+    # the offer must actually contain the user's code — belt and braces
+    if code and code not in (card.get("offer") or "") and code not in (card.get("headline") or ""):
+        card["offer"] = (card.get("offer", "").rstrip(". ") +
+                         (f" – kód {code}" if lang == "cs" else f" — code {code}"))
+    card["discount"] = {"kind": discount.get("kind", "percent"),
+                        "value": discount.get("value"), "code": code}
+    return card
 
 
 def all_cards(profiles, hook: dict, use_llm=True, currency="£", lang="en") -> list[dict]:

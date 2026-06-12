@@ -69,11 +69,21 @@ def _heuristic(header: list[str], samples: list[list], delimiter: str | None = N
     blob = " ".join(header).lower() + " " + " ".join(
         str(c) for row in samples for c in row).lower()
     currency = next((sym for sym, ks in CURRENCY_HINTS.items() if any(k in blob for k in ks)), "")
-    # decimal: which separator is used as 'digits<sep>1-2 digits'? a semicolon
-    # delimiter is itself strong evidence of a decimal-comma locale
+    # decimal detection, strongest evidence first:
+    # 1. unambiguous grouped formats: '1.234,56' / '1.234' => comma-decimal
+    #    locale, '1,234.56' => dot-decimal (a bare '1.234' would otherwise
+    #    parse as 1.234 instead of 1234 — silent 1000x corruption)
+    # 2. frequency of 'digits<sep>1-2 digits' endings
+    # 3. a semicolon delimiter is itself evidence of a decimal-comma locale
+    eu_grouped = len(re.findall(r"\d{1,3}(?:\.\d{3})+(?:,\d+)?(?![\d.])", blob))
+    us_grouped = len(re.findall(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?(?![\d,])", blob))
     commas = len(re.findall(r"\d+,\d{1,2}(?!\d)", blob))
     dots = len(re.findall(r"\d+\.\d{1,2}(?!\d)", blob))
-    if commas > dots:
+    if eu_grouped > us_grouped:
+        decimal = ","
+    elif us_grouped > eu_grouped:
+        decimal = "."
+    elif commas > dots:
         decimal = ","
     elif dots > commas:
         decimal = "."

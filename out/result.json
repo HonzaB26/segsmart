@@ -310,7 +310,7 @@
     {
       "objective": "Znovuaktivovat ztracené zákazníky před zimou",
       "channel": "E-mail",
-      "offer": "Kód ZPĚTVÍTÁZKY pro slevu 15 % na vše",
+      "offer": "Sleva 15 % na vše při dalším nákupu",
       "headline": "Chybíte nám. Otevřete si svou slevu.",
       "rationale": "Cílená e-mailová reakce s nízkým nákladem efektivně naváže kontakt s odchozími zákazníky a zvýší konverzi před sezónním vrcholem.",
       "priority": "medium",
@@ -326,8 +326,8 @@
     {
       "objective": "Reaktivovat, nebo levně opustit",
       "channel": "E-mail",
-      "offer": "Chybíte nám – kód na 20 % zpět",
-      "headline": "Chybíte nám – kód na 20 % zpět",
+      "offer": "Chybíte nám – sleva 20 % na příští nákup",
+      "headline": "Chybíte nám – sleva 20 % na příští nákup",
       "rationale": "Pravidlové výchozí nastavení.",
       "priority": "low",
       "_source": "fallback",

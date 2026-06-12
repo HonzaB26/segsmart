@@ -30,5 +30,8 @@
   },
 
   "output": { "currency": "Kč", "language": "cs" },
-  "ai": { "use_llm": true }
+  "ai": { "use_llm": true },
+
+  "_mailer_comment": "optional: campaign Launch POSTs the mailing JSON here (n8n / Zapier / your own SMTP script); without it the artifact is just saved to out/mailings/",
+  "mailer": { "webhook_url": "" }
 }

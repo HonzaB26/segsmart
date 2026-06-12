@@ -1,10 +1,30 @@
 """Small shared helpers."""
 from __future__ import annotations
 import json
+import os
+import tempfile
 
 
 class NoValidData(ValueError):
     """Raised when a dataset is empty / has no usable rows after cleaning."""
+
+
+def atomic_write_json(path: str, obj, indent=2) -> str:
+    """Write JSON via temp-file + os.replace so concurrent readers (the
+    ThreadingHTTPServer serves these files) never see a partial body."""
+    d = os.path.dirname(path) or "."
+    os.makedirs(d, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=d, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(obj, f, indent=indent, ensure_ascii=False)
+            f.write("\n")
+        os.replace(tmp, path)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+    return path
 
 
 def extract_json(raw: str) -> dict:

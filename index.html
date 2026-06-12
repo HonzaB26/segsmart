@@ -236,22 +236,7 @@ function render(r){
       + `<div class="cap">${esc(s.name)}</div></div>`;
   }).join('');
 
-  // campaigns
-  $('#camps').innerHTML = r.campaigns.map(cp=>{
-    const e=cp.estimate;
-    const pri = ['high','medium','low'].includes(cp.priority)?cp.priority:'medium';
-    return `<div class="camp" style="border-left-color:${(r.segments.find(s=>s.name===cp.segment)||{}).color||'#888'}">
-      <div class="top"><span class="seg">${esc(cp.segment)}</span>
-        <span class="pri ${pri}">${esc(pri)}</span></div>
-      <div class="head">“${esc(cp.headline)}”</div>
-      <div class="det">${esc(cp.channel)} · ${esc(cp.offer)}</div>
-      <div class="det" style="margin-top:3px">${esc(cp.rationale||'')}</div>
-      <div class="est">≈ ${e.expected_responders} responders → ${fmtMoney(e.est_incremental_revenue,c)} `
-      + `(@${Math.round(e.assumed_response_rate*100)}% response)</div>
-      <span class="src">${esc(cp._source)}</span></div>`;
-  }).join('');
-  const llmName = (r.campaigns[0]||{})._source||'';
-  $('#llmtag').textContent = llmName.includes('fallback')?'· rule-based':'· '+llmName+' (on-device)';
+  renderCampaigns(r);
 
   // seasonality
   const si = r.seasonality.index, maxI=Math.max(...si.map(m=>m.index));
@@ -274,11 +259,102 @@ function render(r){
   ].map(([b,l,s])=>`<div class="val"><b>${b}</b><small>${l}</small><small>${s}</small></div>`).join('');
 }
 
+// campaign cards: render + owner-discount workflow + launch
+let CUR=null;   // last rendered result (campaign/launch handlers need it)
+function renderCampaigns(r){
+  CUR=r;
+  const c = r.meta.currency||'£';
+  const lang = c==='Kč'?'cs':'en';
+  $('#camps').innerHTML = r.campaigns.map((cp,i)=>{
+    const e=cp.estimate;
+    const pri = ['high','medium','low'].includes(cp.priority)?cp.priority:'medium';
+    const d=cp.discount;
+    return `<div class="camp" style="border-left-color:${(r.segments.find(s=>s.name===cp.segment)||{}).color||'#888'}">
+      <div class="top"><span class="seg">${esc(cp.segment)}</span>
+        <span class="pri ${pri}">${esc(pri)}</span></div>
+      <div class="head">“${esc(cp.headline)}”</div>
+      <div class="det">${esc(cp.channel)} · ${esc(cp.offer)}</div>
+      <div class="det" style="margin-top:3px">${esc(cp.rationale||'')}</div>
+      <div class="est">≈ ${e.expected_responders} responders → ${fmtMoney(e.est_incremental_revenue,c)} `
+      + `(@${Math.round(e.assumed_response_rate*100)}% response)</div>
+      ${d&&d.code?`<div class="det" style="margin-top:3px">🎟 ${esc(d.code)}</div>`:''}
+      <div class="controls" style="margin-top:9px">
+        <button class="ghost" style="padding:5px 10px;font-size:12px" data-act="disc" data-i="${i}">💰 ${lang==='cs'?'Přidat slevu':'Add discount'}</button>
+        <button style="padding:5px 10px;font-size:12px" data-act="launch" data-i="${i}">🚀 Launch</button>
+        <span class="hint" data-status="${i}" style="margin:0"></span>
+      </div>
+      <div data-form="${i}" style="display:none;margin-top:8px">
+        <div class="controls" style="margin-top:0">
+          <select data-f="kind">
+            <option value="percent">${lang==='cs'?'% sleva':'% off'}</option>
+            <option value="amount">${lang==='cs'?'částka':'amount off'}</option>
+            <option value="free_shipping">${lang==='cs'?'doprava zdarma':'free shipping'}</option>
+          </select>
+          <input data-f="value" type="number" min="1" placeholder="15" style="width:64px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px">
+          <input data-f="code" placeholder="${lang==='cs'?'kód, např. JARO15':'code, e.g. SPRING15'}" style="width:140px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px">
+          <button class="ghost" style="padding:5px 10px;font-size:12px" data-act="regen" data-i="${i}">${lang==='cs'?'Přegenerovat text ▸':'Regenerate copy ▸'}</button>
+        </div>
+      </div>
+      <span class="src">${esc(cp._source)}</span></div>`;
+  }).join('');
+  const llmName = (r.campaigns[0]||{})._source||'';
+  $('#llmtag').textContent = llmName.includes('fallback')?'· rule-based':'· '+llmName+' (on-device)';
+
+  document.querySelectorAll('#camps [data-act]').forEach(b=>b.onclick=()=>cardAction(b.dataset.act,+b.dataset.i));
+}
+
+async function cardAction(act, i){
+  const cp=CUR.campaigns[i];
+  const cur=CUR.meta.currency||'£';
+  const lang=cur==='Kč'?'cs':'en';
+  const st=document.querySelector(`[data-status="${i}"]`);
+  const form=document.querySelector(`[data-form="${i}"]`);
+  if(act==='disc'){ form.style.display=form.style.display==='none'?'block':'none'; return; }
+  if(act==='regen'){
+    const get=f=>form.querySelector(`[data-f="${f}"]`).value;
+    const discount={kind:get('kind'), value:+get('value')||null, code:get('code').trim()};
+    if(discount.kind!=='free_shipping' && !discount.value){ st.textContent=lang==='cs'?'zadejte výši slevy':'enter the discount value'; return; }
+    if(!discount.code){ st.textContent=lang==='cs'?'zadejte kód z vašeho e-shopu':'enter the code from your shop system'; return; }
+    st.textContent=lang==='cs'?'přegenerovávám…':'regenerating…';
+    try{
+      const r=await fetch('/api/refine_card',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({card:cp, discount, language:lang, currency:cur, use_llm:true})});
+      const j=await r.json();
+      if(j.error){ st.textContent='error: '+j.error; return; }
+      CUR.campaigns[i]=j; renderCampaigns(CUR);
+    }catch(e){ st.textContent='error: '+e; }
+    return;
+  }
+  if(act==='launch'){
+    const recipients=(CUR.customers||[]).filter(x=>x.segment===cp.segment).map(x=>({id:x.id}));
+    st.textContent=lang==='cs'?'spouštím…':'launching…';
+    try{
+      const r=await fetch('/api/launch',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({card:cp, recipients, language:lang, currency:cur})});
+      const j=await r.json();
+      if(j.error){ st.textContent='error: '+j.error; return; }
+      const dl=document.createElement('a');
+      dl.href=URL.createObjectURL(new Blob([JSON.stringify(j.mailing,null,2)],{type:'application/json'}));
+      dl.download=j.saved.split('/').pop(); dl.textContent=lang==='cs'?'stáhnout':'download';
+      dl.style.color='var(--teal)';
+      st.innerHTML=`✓ ${j.recipients} ${lang==='cs'?'příjemců':'recipients'} → ${esc(j.saved)} · `
+        + (j.delivery.delivered?'webhook ✓':esc(j.delivery.note||j.delivery.error||''))+' · ';
+      st.appendChild(dl);
+    }catch(e){ st.textContent='error: '+e; }
+  }
+}
+
 // segment drill-down: who exactly is in this segment + CSV export
 function toCsv(rows){
   const head='customer_id,segment,recency_days,orders,total_spent';
-  const q=v=>/[",\n]/.test(v)?'"'+String(v).replace(/"/g,'""')+'"':v;
-  return head+'\n'+rows.map(c=>[q(c.id),c.segment,c.recency,c.frequency,c.monetary].join(',')).join('\n');
+  // formula-injection guard: a customer id like "=HYPERLINK(...)" must not
+  // execute when the export is opened in a spreadsheet
+  const q=v=>{
+    let s=String(v);
+    if(/^[=+\-@\t\r]/.test(s)) s="'"+s;
+    return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+  };
+  return head+'\n'+rows.map(c=>[q(c.id),q(c.segment),c.recency,c.frequency,c.monetary].join(',')).join('\n');
 }
 function download(name, text){
   const a=document.createElement('a');

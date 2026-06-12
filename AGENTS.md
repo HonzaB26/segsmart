@@ -39,7 +39,8 @@ change must preserve that.
 7. **Persistence contract**: runs from the saved config persist
    `out/result.json` plus a per-customer segment snapshot in `out/history/`
    (feeds the dashboard and migration tracking); ad-hoc wizard uploads
-   (`/api/run`) must NOT persist anything. `out/history/` is never tracked.
+   (`/api/run`) must NOT persist anything. `out/history/` and `out/mailings/`
+   (launch artifacts with recipient lists) are never tracked.
 8. **The server stays stdlib-only** (`http.server`). No Flask/FastAPI — the
    buy-once product has no dependency churn.
 9. **Docs ship in the same commit as the change.** If a change alters behavior,
@@ -87,6 +88,15 @@ CI (`.github/workflows/ci.yml`) runs pytest on every push/PR. Keep it green.
 - **LLM impact numbers are banned**: campaign cards get deterministic estimates
   (`seg/campaigns.py::RESPONSE` rates) and deterministic priority by revenue
   opportunity. The LLM writes copy, never numbers.
+- **LLM discount codes are banned too**: models fabricate Czech-lettered codes
+  no shop accepts. Prompts forbid them AND `strip_voucher_codes` scrubs the
+  output. Real codes enter only via `apply_discount` (owner input, validated).
+- **File sources from the HTTP API are confined to `data/`**
+  (`seg/config.py::fetch_raw trusted_paths`) — never relax this; it's what
+  stops `/api/preview_source` from reading arbitrary local files.
+- **JSON files the server serves are written via `seg.util.atomic_write_json`**
+  (temp + `os.replace`) — plain `json.dump` can serve a partial file under
+  the threaded server.
 - **`${ENV_VAR}` in config values** is expanded at *use* time
   (`seg/config.py::_env`), never written back — keeps secrets out of the file.
 

@@ -24,3 +24,5 @@ venv/
 .DS_Store
 # per-run segment snapshots (real per-customer data of whoever runs this)
 out/history/
+# launched mailings contain recipient lists (real customer data)
+out/mailings/

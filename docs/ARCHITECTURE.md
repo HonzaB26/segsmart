@@ -101,10 +101,25 @@ inventing segments.
 | quality | `qwen3.6:35b` MoE | polished Czech campaign copy (CPU-slow, batch) |
 
 A rule-based fallback writes the cards when no model is reachable, so the
-product never hard-depends on the LLM. Two hard lines: model output is
-untrusted (escaped in the UI, JSON extracted defensively), and **numbers are
+product never hard-depends on the LLM. Three hard lines: model output is
+untrusted (escaped in the UI, JSON extracted defensively), **numbers are
 never the model's** — response-rate assumptions and priority ranking are
-deterministic and printed on the card.
+deterministic and printed on the card — and **commercial terms are never the
+model's**: prompts forbid invented voucher codes and `strip_voucher_codes`
+removes any that slip through (local models happily fabricate Czech-lettered
+codes no shop accepts).
+
+## Campaign workflow: draft → discount → launch
+
+The card the model drafts is copy, not commerce. The owner then optionally
+**adds a real discount** (percent / amount / free shipping + the code from
+their own shop system) — `apply_discount` regenerates the copy around it (LLM
+rewrite with the code protected, deterministic template as fallback). **Launch**
+turns the approved card into a mailing artifact: subject, assembled body and
+the segment's recipient list, written to `out/mailings/` (never git-tracked)
+and optionally POSTed to `config.mailer.webhook_url` — the seam where n8n,
+Zapier, or a ten-line SMTP script plugs in. SegSmart itself never sends
+anything; launch *is* the human gate.
 
 ## The quality layer — honesty as a feature
 
@@ -170,14 +185,22 @@ renders once and leaves nothing on disk.
 | `/api/preview_source` | POST | connector test: first rows + mapping |
 | `/api/run` | POST | ad-hoc upload run (not persisted) |
 | `/api/run_config` | POST | run from config (persisted) |
+| `/api/refine_card` | POST | rewrite a card around an owner-set discount |
+| `/api/launch` | POST | approved card → mailing artifact (+ webhook) |
 
 Defence layers (sized for a data-handling tool on an SME machine):
-binds `127.0.0.1` unless told otherwise · optional HTTP Basic Auth (`SEG_AUTH`)
-over every route — the results are customer revenue data · upload size cap ·
-uploads handled as bytes and deleted after ad-hoc runs · all LLM/CSV-derived
-strings escaped in the UI · connector queries restricted to a single
-SELECT/WITH · Docker runs as a non-root user. For exposure beyond a trusted
-LAN, terminate TLS in a reverse proxy in front.
+binds `127.0.0.1` unless told otherwise (the compose file maps the container
+port to host-localhost too) · optional HTTP Basic Auth (`SEG_AUTH`) over every
+route — the results are customer revenue data — with a loud startup warning
+when binding publicly without it · API-supplied file sources confined to
+`data/` (no arbitrary-file read via preview; hand-edited configs on disk may
+point anywhere) · upload size cap · uploads handled as bytes and deleted after
+ad-hoc runs · all LLM/CSV-derived strings escaped in the UI · CSV exports
+guard against spreadsheet formula injection · all JSON written atomically
+(temp file + `os.replace`, so the threaded server never serves a partial
+file) · connector queries restricted to a single SELECT/WITH · Docker runs as
+a non-root user. For exposure beyond a trusted LAN, terminate TLS in a reverse
+proxy in front.
 
 ## Deployment
 

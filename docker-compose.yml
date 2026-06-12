@@ -18,7 +18,9 @@ services:
   segsmart:
     build: .
     ports:
-      - "8099:8099"
+      # host-localhost only by default — the dashboard shows customer revenue
+      # data. To open it to your LAN, change to "8099:8099" AND set SEG_AUTH.
+      - "127.0.0.1:8099:8099"
     volumes:
       # your data-source configuration + uploaded files survive restarts
       - ./config:/app/config

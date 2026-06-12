@@ -20,6 +20,10 @@ REPO = Path(__file__).resolve().parent.parent
 # To extend: python3 -c "import hashlib; print(hashlib.sha256(b'<token>').hexdigest())"
 FORBIDDEN_TOKEN_HASHES = {
     "efee614420c57ddd2a8e91eeef6f6b83d5356c2288155be0f273bef986e3b850",
+    "21cba5305aa67d1ff3cb6201861dced35ae83a07ab21145b5f653deefafcf3e1",
+    "cf053e58394c10c65e4923131e4279a8c06bafdf807aa9e097eca15dc20b4b22",
+    "8353773cc3bb4b5031561324570be283495d6e825c6067ceb3de980b32e9f4fc",
+    "314e322f94349cb7151880ae279f70d9fd3e1104ee7231f437fd46d327e288ff",
 }
 
 # files where e-mail-shaped strings are fine (synthetic data + test fixtures)

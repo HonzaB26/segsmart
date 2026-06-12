@@ -43,7 +43,9 @@ The local model isn't a compromise. It's the moat.
 | **Automatic segmentation** | RFM scoring → 5 named, explainable segments |
 | **Cross-check** | KMeans clustering on behavioral features, compared by adjusted Rand index |
 | **Seasonality** | Monthly revenue index → the peak becomes a campaign hook |
-| **AI campaign drafts** | A **local LLM** writes objective / channel / offer / headline per segment |
+| **AI campaign drafts** | A **local LLM** writes objective / channel / offer / headline per segment — copy only, it never invents discount codes |
+| **Owner-set discounts** | Add a real discount (% / amount / free shipping + your shop's code) to a card; the copy regenerates around it |
+| **Launch** | An approved card becomes a mailing artifact (subject, body, recipient list) in `out/mailings/`, optionally POSTed to your mailer webhook (n8n / Zapier / own script) |
 | **Impact estimates** | Computed deterministically (transparent response-rate assumptions), never hallucinated |
 | **Human gate** | Campaigns are drafts the owner approves — nothing sends automatically |
 | **Data honesty** | Ingest report (rows kept/dropped & why) + warnings when the data can't support conclusions (short window, suspicious money values, weak cluster agreement) |
@@ -239,7 +241,8 @@ install only what your deployment uses.
 - [x] GHCR image published on version tags
 - [ ] Scheduled refresh (cron/systemd timer calling `pipeline.py --config`)
 - [ ] BigQuery & Shoptet connectors hardened against live tenants
-- [ ] Campaign export to ESP (Ecomail / SmartEmailing / Mailchimp)
+- [x] Campaign launch → mailing artifact + mailer webhook seam
+- [ ] Native ESP integrations (Ecomail / SmartEmailing / Mailchimp) on top of the webhook
 - [ ] Churn / propensity model per segment
 - [ ] Background job queue so slow quality-model runs don't block HTTP
 - [ ] Margin-aware segmentation (profit, not just revenue, where cost data exists)

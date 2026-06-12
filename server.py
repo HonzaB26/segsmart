@@ -9,6 +9,9 @@ POST /api/infer_mapping  -> propose a column mapping for an uploaded file
 POST /api/preview_source -> fetch a few rows from a configured source + mapping
 POST /api/run            -> ad-hoc run on an uploaded file (NOT persisted)
 POST /api/run_config     -> run from the saved config (persisted -> dashboard)
+POST /api/refine_card    -> rewrite a campaign card with an owner-set discount
+POST /api/launch         -> approved card -> mailing artifact in out/mailings/
+                            (+ optional POST to config mailer.webhook_url)
 
 Run:  python3 server.py     then open http://localhost:8099
 Everything — data, config, models, AI campaign copy — stays on this machine.
@@ -133,6 +136,43 @@ class H(BaseHTTPRequestHandler):
             except Exception as e:
                 return self._send(500, json.dumps({"error": str(e)}))
 
+        # --- rewrite a campaign card around an owner-specified discount ---
+        if self.path == "/api/refine_card":
+            try:
+                from seg.campaigns import apply_discount
+                card = req.get("card") or {}
+                discount = req.get("discount") or {}
+                code = str(discount.get("code") or "").strip()
+                if code and not re.fullmatch(r"[\w-]{2,32}", code):
+                    return self._send(400, json.dumps(
+                        {"error": "discount code: letters/digits/dash only, 2-32 chars"}))
+                out = apply_discount(card, discount, lang=req.get("language", "en"),
+                                     currency=req.get("currency", "£"),
+                                     use_llm=req.get("use_llm", True))
+                return self._send(200, json.dumps(out, ensure_ascii=False))
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}))
+
+        # --- launch: approved card -> mailing artifact (+ optional webhook) ---
+        if self.path == "/api/launch":
+            try:
+                from seg.mailer import build_mailing, save_mailing, deliver
+                card = req.get("card") or {}
+                recipients = req.get("recipients") or []
+                if not recipients:
+                    return self._send(400, json.dumps(
+                        {"error": "no recipients — run a segmentation first"}))
+                mailing = build_mailing(card, recipients,
+                                        lang=req.get("language", "en"),
+                                        currency=req.get("currency", "£"))
+                path = save_mailing(mailing)
+                report = deliver(mailing, (cfgmod.load_config().get("mailer")))
+                return self._send(200, json.dumps(
+                    {"saved": path, "recipients": len(mailing["recipients"]),
+                     "delivery": report, "mailing": mailing}, ensure_ascii=False))
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}))
+
         # --- save the local config file ---
         if self.path == "/api/config":
             cfg = req.get("config")
@@ -147,7 +187,9 @@ class H(BaseHTTPRequestHandler):
         # --- preview a configured source: a few rows + a proposed mapping ---
         if self.path == "/api/preview_source":
             try:
-                raw = cfgmod.fetch_raw(req.get("source") or {})
+                # API-supplied source: file paths confined to data/ (no
+                # arbitrary-file read via preview)
+                raw = cfgmod.fetch_raw(req.get("source") or {}, trusted_paths=False)
                 head = raw.head(5).astype(str)
                 header = list(raw.columns)
                 samples = head.values.tolist()
@@ -165,7 +207,10 @@ class H(BaseHTTPRequestHandler):
         if self.path == "/api/run_config":
             try:
                 cfg = req.get("config")
-                if cfg is None:
+                # config straight from the local disk is the user's own;
+                # config in the request body is API input -> confined paths
+                from_disk = cfg is None
+                if from_disk:
                     cfg = cfgmod.load_config()
                 # wizard upload being adopted as THE data source: store the
                 # file locally so future runs (and hand edits) can point at it
@@ -180,7 +225,7 @@ class H(BaseHTTPRequestHandler):
                     cfg["source"].update({"type": "file", "path": dest})
                 if req.get("save", True):
                     cfgmod.save_config(cfg)
-                res = pipeline.run_config(cfg)
+                res = pipeline.run_config(cfg, trusted_paths=from_disk)
                 return self._send(200, json.dumps(res, ensure_ascii=False))
             except (NoValidData, ValueError) as e:      # bad config / non-SELECT
                 return self._send(400, json.dumps({"error": str(e)}))
@@ -217,4 +262,9 @@ class H(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     print(f"SegSmart dashboard → http://{HOST}:{PORT}  (Ctrl-C to stop)")
+    if HOST not in ("127.0.0.1", "localhost", "::1") and not AUTH:
+        print("  ⚠ WARNING: binding a non-localhost address WITHOUT authentication.\n"
+              "    Anyone who can reach this port sees customer revenue data and\n"
+              "    can reconfigure the data source. Set SEG_AUTH=user:password\n"
+              "    (in Docker the compose file maps the port to 127.0.0.1 by default).")
     ThreadingHTTPServer((HOST, PORT), H).serve_forever()

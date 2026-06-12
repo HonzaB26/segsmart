@@ -26,10 +26,11 @@ re-read on every run — hand edits apply without a restart.
 """
 from __future__ import annotations
 import json, os, re
+from pathlib import Path
 
 import pandas as pd
 
-from seg.util import NoValidData
+from seg.util import NoValidData, atomic_write_json
 
 CONFIG_PATH = os.environ.get("SEG_CONFIG", "config/segsmart.json")
 
@@ -45,12 +46,7 @@ def load_config(path: str | None = None) -> dict:
 
 
 def save_config(cfg: dict, path: str | None = None) -> str:
-    p = path or CONFIG_PATH
-    os.makedirs(os.path.dirname(p) or ".", exist_ok=True)
-    with open(p, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2, ensure_ascii=False)
-        f.write("\n")
-    return p
+    return atomic_write_json(path or CONFIG_PATH, cfg)
 
 
 def _env(v):
@@ -60,13 +56,26 @@ def _env(v):
     return v
 
 
-def fetch_raw(source: dict) -> pd.DataFrame:
+def fetch_raw(source: dict, trusted_paths: bool = False) -> pd.DataFrame:
     """Fetch the source's RAW frame (pre-mapping) — also used by the /setup
-    preview so the user can confirm the column mapping before saving."""
+    preview so the user can confirm the column mapping before saving.
+
+    trusted_paths: file-type sources may point anywhere ONLY when the config
+    came from the local disk (CLI, hand-edited file). Configs supplied over
+    the HTTP API are confined to data/ — otherwise any API caller could read
+    arbitrary local files (/proc/self/environ, ~/.ssh/...) via the preview."""
     t = source.get("type")
     if t == "file":
         from seg.sniff import read_table
         path = _env(source.get("path", ""))
+        if not trusted_paths:
+            p = Path(path).resolve()
+            root = Path("data").resolve()
+            if not p.is_relative_to(root):
+                raise NoValidData(
+                    "file sources supplied via the API are restricted to the "
+                    "data/ directory — upload the file in the wizard, or point "
+                    f"the config file on disk ({CONFIG_PATH}) at it by hand")
         if not path or not os.path.exists(path):
             raise NoValidData(f"file not found: {path!r} — check source.path in the config")
         with open(path, "rb") as f:
@@ -101,9 +110,9 @@ def fetch_raw(source: dict) -> pd.DataFrame:
     raise NoValidData(f"unknown source type {t!r} — expected one of {SOURCE_TYPES}")
 
 
-def fetch_dataframe(source: dict) -> pd.DataFrame:
+def fetch_dataframe(source: dict, trusted_paths: bool = False) -> pd.DataFrame:
     """Source config -> canonical order-line frame."""
-    raw = fetch_raw(source)
+    raw = fetch_raw(source, trusted_paths=trusted_paths)
     if source.get("type") in ("sample", "shoptet"):     # already canonical
         return raw
     from seg.loader import load_dataframe

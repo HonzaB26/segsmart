@@ -71,10 +71,19 @@ def read_table(data: bytes, filename: str = "") -> tuple[pd.DataFrame, dict]:
 
     if (filename.lower().endswith((".xlsx", ".xls"))
             or data[:4] in (_XLSX_MAGIC, _XLS_MAGIC)):
-        df = pd.read_excel(io.BytesIO(data))
-        df.columns = _clean_header(list(df.columns))
+        # header=None + the same header detection as CSV: Excel exports have
+        # report titles above the real header just as often as CSVs do
+        grid = pd.read_excel(io.BytesIO(data), header=None)
+        rows = [["" if pd.isna(c) else str(c) for c in row]
+                for row in grid.itertuples(index=False)]
+        rows = [r for r in rows if any(c.strip() for c in r)]
+        if len(rows) < 2:
+            raise NoValidData("file has no data rows")
+        h = _find_header(rows)
+        header = _clean_header(rows[h])
+        df = pd.DataFrame(rows[h + 1:], columns=header, dtype=str)
         return df, {"encoding": "binary", "delimiter": None,
-                    "skipped_rows": 0, "kind": "excel"}
+                    "skipped_rows": h, "kind": "excel"}
 
     text, encoding = _decode(data)
     delim = _sniff_delimiter(text)

@@ -8,7 +8,7 @@ import json, os, time
 import pandas as pd
 
 from seg.loader import load_uci, load_csv, load_eshop, summary
-from seg.util import NoValidData
+from seg.util import NoValidData, atomic_write_json
 from seg.features import build_features
 from seg.segment import (rfm_segments, kmeans_segments, agreement,
                          segment_profiles, SEGMENTS)
@@ -32,17 +32,20 @@ def run(source="uci", path=None, currency="£", use_llm=True, out="out/result.js
                    lang=lang, source_label=source)
 
 
-def run_config(cfg=None, out="out/result.json"):
+def run_config(cfg=None, out="out/result.json", trusted_paths=True):
     """Run from the local config file (config/segsmart.json) — the configured
     data source IS this installation's data, so the result persists and the
-    dashboard serves it on next load."""
+    dashboard serves it on next load.
+
+    trusted_paths=False for configs that arrived over the HTTP API (file
+    sources then confined to data/ — see seg.config.fetch_raw)."""
     from seg import config as cfgmod
     cfg = cfg if cfg is not None else cfgmod.load_config()
     src = cfg.get("source") or {}
     if not src:
         raise NoValidData("no data source configured — open /setup or edit "
                           f"{cfgmod.CONFIG_PATH}")
-    df = cfgmod.fetch_dataframe(src)
+    df = cfgmod.fetch_dataframe(src, trusted_paths=trusted_paths)
     o, ai = cfg.get("output", {}), cfg.get("ai", {})
     return analyze(df, currency=o.get("currency", "£"),
                    use_llm=ai.get("use_llm", True), out=out,
@@ -122,9 +125,9 @@ def _migration(out, feat, meta):
     while os.path.exists(path):                     # same-second runs must not overwrite
         n += 1
         path = os.path.join(hist_dir, f"segments-{stamp}-{n}.json")
-    with open(path, "w") as f:
-        json.dump({"run_at": time.strftime("%Y-%m-%d %H:%M"),
-                   "date_to": meta["date_to"], "segments": current}, f)
+    atomic_write_json(path, {"run_at": time.strftime("%Y-%m-%d %H:%M"),
+                             "date_to": meta["date_to"], "segments": current},
+                      indent=None)
     return migration
 
 
@@ -212,9 +215,7 @@ def analyze(df, currency="£", use_llm=True, out="out/result.json",
     # be written to the shared demo file on disk)
     if out:
         result["migration"] = _migration(out, feat, meta)
-        os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
-        with open(out, "w") as f:
-            json.dump(result, f, indent=2, ensure_ascii=False)
+        atomic_write_json(out, result)              # readers never see a partial file
     print(f"computed in {result['runtime_secs']}s "
           f"({'LLM' if use_llm else 'no-LLM'}, {meta['customers']} customers)"
           + (f", wrote {out}" if out else ", not persisted"))
