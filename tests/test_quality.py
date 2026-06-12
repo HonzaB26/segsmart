@@ -9,12 +9,14 @@ from seg.loader import load_dataframe
 
 
 def _csv_df(rows, span_days=400, n_cust=8, value=100.0):
+    # string cells throughout, like a real CSV read — also keeps the
+    # corrupt-a-cell tests valid on pandas versions that refuse str->datetime64
     recs = []
     for i in range(rows):
+        day = pd.Timestamp("2025-01-01") + pd.Timedelta(days=(i * span_days) // rows)
         recs.append({"customer_id": f"c{i % n_cust}", "order_id": f"o{i}",
-                     "order_date": (pd.Timestamp("2025-01-01")
-                                    + pd.Timedelta(days=(i * span_days) // rows)),
-                     "quantity": 1, "unit_price": value})
+                     "order_date": day.strftime("%Y-%m-%d"),
+                     "quantity": "1", "unit_price": str(value)})
     return pd.DataFrame(recs)
 
 
