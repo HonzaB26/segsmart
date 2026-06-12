@@ -193,6 +193,34 @@ def test_read_table_empty_raises():
         read_table(b"just one line, no data")
 
 
+# --- the C-prefix cancellation rule must be UCI-shaped, not a substring grab ---
+def test_cz_prefixed_order_ids_survive(tmp_path):
+    p = _write(tmp_path, "a.csv", "utf-8", "customer_id,order_id,order_date,quantity,unit_price",
+               lambda r: f"{r['email']},CZ2025-{r['order'][4:]},{r['date']:%Y-%m-%d},"
+                         f"{r['qty']},{r['price']}")
+    df, _ = _ingest(p)
+    _check(df)                          # 'CZ...' is an order number, not a cancellation
+
+
+def test_synthesized_ids_for_c_customers_survive(tmp_path):
+    # customer ids starting with 'c' + synthesized order ids must not be
+    # mistaken for C-invoices (this silently deleted 100% of rows once)
+    p = _write(tmp_path, "a.csv", "utf-8", "klient,datum,castka",
+               lambda r: f"c_{r['email']},{r['date']:%Y-%m-%d},{r['qty'] * r['price']:.2f}")
+    df, _ = _ingest(p)
+    _check(df)
+
+
+def test_uci_c_invoice_still_dropped():
+    from seg.loader import load_dataframe
+    df = pd.DataFrame({
+        "customer_id": ["a", "a"], "order_id": ["536365", "C536366"],
+        "order_date": ["2025-01-01", "2025-01-02"],
+        "quantity": [1, -1], "unit_price": [10.0, 10.0]})
+    out = load_dataframe(df, {})
+    assert list(out.order_id) == ["536365"]
+
+
 def test_missing_money_column_raises(tmp_path):
     p = tmp_path / "a.csv"
     p.write_text("customer_id,order_date\na@x.cz,2025-01-01\nb@x.cz,2025-01-02\n")

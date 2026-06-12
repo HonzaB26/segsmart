@@ -79,7 +79,8 @@ def _finalize(df: pd.DataFrame, drop_cancellations=True, drop_nonpositive=True) 
     df["customer_id"] = df["customer_id"].astype(str).str.strip()
     df = df.dropna(subset=["order_date"])
     df = df[~df["customer_id"].str.lower().isin(("", "nan", "none"))]
-    if "order_id" not in df:                        # transaction dump: synthesize
+    synthesized_ids = "order_id" not in df
+    if synthesized_ids:                             # transaction dump: synthesize
         df["order_id"] = (df["customer_id"] + "@"
                           + df["order_date"].dt.strftime("%Y-%m-%d"))
     df["order_id"] = df["order_id"].astype(str)
@@ -98,8 +99,12 @@ def _finalize(df: pd.DataFrame, drop_cancellations=True, drop_nonpositive=True) 
     df["unit_price"] = pd.to_numeric(df["unit_price"], errors="coerce")
     df = df.dropna(subset=["unit_price"])
     if drop_cancellations:
-        # a cancellation/return: negative quantity, or order id flagged 'C'
-        df = df[~df["order_id"].str.upper().str.startswith("C")]
+        # a cancellation/return: negative quantity, or a UCI-style C-invoice
+        # ('C' + digits ONLY — a plain startswith('C') would silently drop
+        # every order in an export numbered 'CZ2025-001', and never applies
+        # to ids we synthesized ourselves)
+        if not synthesized_ids:
+            df = df[~df["order_id"].str.fullmatch(r"[Cc]\d+")]
         df = df[df["quantity"] > 0]
     if drop_nonpositive:
         df = df[df["unit_price"] > 0]

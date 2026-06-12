@@ -21,6 +21,9 @@
   .sub{color:var(--mut);font-size:13px}
   .badge{margin-left:auto;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.4);
          color:var(--good);padding:6px 12px;border-radius:999px;font-size:12.5px;font-weight:600}
+  a.nav{color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:9px;
+        padding:7px 14px;font-size:13px;font-weight:600}
+  a.nav:hover{border-color:var(--teal);color:var(--teal)}
   .meta{color:var(--mut);font-size:12.5px;margin:2px 0 18px}
   .grid{display:grid;gap:16px}
   .kpis{grid-template-columns:repeat(4,1fr)}
@@ -80,6 +83,7 @@
     <div class="logo">Seg<span>Smart</span></div>
     <div class="sub">customer segmentation that never leaves your laptop</div>
     <div class="badge">🔒 Data stays on this machine</div>
+    <a class="nav" href="/setup">⚙ Data setup</a>
   </header>
   <div class="meta" id="meta">loading…</div>
 
@@ -116,37 +120,8 @@
     </div>
   </div>
 
-  <div class="card" style="margin-top:16px">
-    <h3>Run on your own data</h3>
-    <div class="controls">
-      <input type="file" id="file" accept=".csv,.tsv,.txt,.xls,.xlsx">
-      <button id="analyze">Analyze my file ▸</button>
-      <button class="ghost" id="reload">Reload sample</button>
-      <span id="status"></span>
-    </div>
-    <div class="hint">Drop ANY e-shop CSV — column names in any language. A local model figures out
-      how it maps to our format; you confirm. Nothing leaves this machine.</div>
-
-    <!-- step 2: confirm the auto-detected mapping -->
-    <div id="mapper" style="display:none;margin-top:16px">
-      <div id="detected" class="hint" style="margin-bottom:10px"></div>
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="color:var(--mut);text-align:left">
-          <th style="padding:4px 8px">Our field</th><th style="padding:4px 8px">Your column</th></tr></thead>
-        <tbody id="maprows"></tbody>
-      </table>
-      <div class="controls" style="margin-top:12px">
-        <label class="cur">Currency <input id="m_currency" style="width:54px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px"></label>
-        <label class="cur">Decimal <select id="m_decimal"><option value=".">.</option><option value=",">,</option></select></label>
-        <label class="cur">Language <select id="m_lang"><option value="en">en</option><option value="cs">cs</option><option value="de">de</option></select></label>
-        <label class="cur"><input type="checkbox" id="llm" checked> AI campaign copy</label>
-        <button id="run">Run with this mapping ▸</button>
-        <span id="run_status"></span>
-      </div>
-    </div>
-  </div>
-
-  <div class="foot">SegSmart · MBA Project 2026 · runs fully offline · RFM + KMeans + on-device LLM</div>
+  <div class="foot">SegSmart · MBA Project 2026 · runs fully offline · RFM + KMeans + on-device LLM
+    · <a href="/setup" style="color:#7c79b8">data setup</a></div>
 </div>
 
 <script>
@@ -162,7 +137,8 @@ function render(r){
   $('#meta').textContent =
     `${r.meta.rows.toLocaleString()} transactions · ${r.meta.customers.toLocaleString()} customers · `
     + `${r.meta.orders.toLocaleString()} orders · ${r.meta.date_from} → ${r.meta.date_to} · `
-    + `${r.meta.countries} countries · computed in ${r.runtime_secs}s`;
+    + `${r.meta.countries} countries · computed in ${r.runtime_secs}s`
+    + (r.meta.source ? ` · source: ${r.meta.source}` : '');
 
   // KPIs
   const k = r.kpis;
@@ -247,82 +223,9 @@ function render(r){
 }
 
 async function load(){
-  $('#status').textContent='';
   try{ const r=await fetch('/api/result'); if(r.ok){ render(await r.json()); return; } }catch(e){}
-  $('#meta').textContent='No result yet — click "Run locally".';
+  $('#meta').innerHTML='No result yet — <a href="/setup" style="color:var(--teal)">set up your data source</a> to get started.';
 }
-
-const CANON_FIELDS = [
-  ['customer_id','Customer (id / e-mail)',true],
-  ['order_id','Order / invoice id (optional)',false],
-  ['order_date','Order date',true],
-  ['quantity','Quantity (optional)',false],
-  ['unit_price','Unit price',false],
-  ['line_value','Line / order total (optional)',false],
-  ['product','Product (optional)',false],
-  ['country','Country (optional)',false],
-];
-let uploadedB64 = '', uploadedName = '';
-
-async function fileToB64(f){
-  const buf = new Uint8Array(await f.arrayBuffer());
-  let s = '';
-  for(let i=0;i<buf.length;i+=0x8000) s += String.fromCharCode.apply(null, buf.subarray(i,i+0x8000));
-  return btoa(s);
-}
-
-// step 1 — analyze: let the local model propose a mapping
-$('#analyze').onclick = async ()=>{
-  const f=$('#file').files[0];
-  if(!f){ $('#status').textContent='pick a file first (CSV, TSV or Excel)'; return; }
-  uploadedB64 = await fileToB64(f); uploadedName = f.name;
-  $('#status').textContent='analyzing locally…';
-  try{
-    const r=await fetch('/api/infer_mapping',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({file_b64:uploadedB64, filename:uploadedName, use_llm:true})});
-    const d=await r.json();
-    if(d.error){ $('#status').textContent='error: '+d.error; return; }
-    buildMapper(d);
-    $('#status').textContent='detected by '+(d.source||'heuristic')+' — please confirm ↓';
-  }catch(e){ $('#status').textContent='error: '+e; }
-};
-
-function buildMapper(d){
-  const header=d.header||[];
-  const opt=sel=>['<option value="">— none —</option>']
-    .concat(header.map(h=>`<option value="${esc(h)}" ${h===sel?'selected':''}>${esc(h)}</option>`)).join('');
-  $('#maprows').innerHTML = CANON_FIELDS.map(([k,label,req])=>
-    `<tr><td style="padding:4px 8px">${label}${req?' <span style="color:var(--red)">*</span>':''}</td>`+
-    `<td style="padding:4px 8px"><select data-k="${k}" style="background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px;min-width:180px">`+
-    `${opt((d.mapping||{})[k])}</select></td></tr>`).join('');
-  $('#m_currency').value = d.currency||'';
-  $('#m_decimal').value = d.decimal||'.';
-  $('#m_lang').value = d.language||'en';
-  const miss=(d.missing_required||[]);
-  $('#detected').innerHTML = miss.length
-    ? `⚠️ couldn't auto-detect: <b>${miss.join(', ')}</b> — set them below`
-    : `✓ all required fields detected — review and run`;
-  $('#mapper').style.display='block';
-}
-
-// step 2 — run with the confirmed mapping
-$('#run').onclick = async ()=>{
-  const mapping={};
-  document.querySelectorAll('#maprows select').forEach(s=>{ if(s.value) mapping[s.dataset.k]=s.value; });
-  for(const [k,,req] of CANON_FIELDS) if(req && !mapping[k]){ $('#run_status').textContent='set '+k+' first'; return; }
-  if(!mapping.unit_price && !mapping.line_value){ $('#run_status').textContent='set a unit price or a total column first'; return; }
-  const body={file_b64:uploadedB64, filename:uploadedName, mapping, use_llm:$('#llm').checked,
-    currency:$('#m_currency').value||'€', decimal:$('#m_decimal').value, language:$('#m_lang').value};
-  $('#run_status').textContent='running locally…';
-  try{
-    const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const j=await r.json();
-    if(j.error){ $('#run_status').textContent='error: '+j.error; return; }
-    render(j); $('#run_status').textContent='done ✓ — dashboard updated above';
-    window.scrollTo({top:0,behavior:'smooth'});
-  }catch(e){ $('#run_status').textContent='error: '+e; }
-};
-$('#reload').onclick = load;
 load();
 </script>
 </body>

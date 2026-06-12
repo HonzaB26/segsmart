@@ -22,15 +22,38 @@ COLORS = {"Champions": "#2dd4bf", "Loyal": "#a78bfa", "At-risk": "#f59e0b",
 
 def run(source="uci", path=None, currency="£", use_llm=True, out="out/result.json",
         mapping=None, lang=None, decimal="."):
-    t0 = time.time()
-    if lang is None:
-        lang = "cs" if source == "milan" or currency == "Kč" else "en"
     if source == "uci":
         df = load_uci(path or "data/online_retail.parquet")
     elif source == "milan":
         df = load_milan(path or "data/bq_export.csv")
     else:
         df = load_csv(path, mapping, decimal=decimal)
+    return analyze(df, currency=currency, use_llm=use_llm, out=out,
+                   lang=lang, source_label=source)
+
+
+def run_config(cfg=None, out="out/result.json"):
+    """Run from the local config file (config/segsmart.json) — the configured
+    data source IS this installation's data, so the result persists and the
+    dashboard serves it on next load."""
+    from seg import config as cfgmod
+    cfg = cfg if cfg is not None else cfgmod.load_config()
+    src = cfg.get("source") or {}
+    if not src:
+        raise NoValidData("no data source configured — open /setup or edit "
+                          f"{cfgmod.CONFIG_PATH}")
+    df = cfgmod.fetch_dataframe(src)
+    o, ai = cfg.get("output", {}), cfg.get("ai", {})
+    return analyze(df, currency=o.get("currency", "£"),
+                   use_llm=ai.get("use_llm", True), out=out,
+                   lang=o.get("language"), source_label=src.get("type"))
+
+
+def analyze(df, currency="£", use_llm=True, out="out/result.json",
+            lang=None, source_label=None):
+    t0 = time.time()
+    if lang is None:
+        lang = "cs" if source_label == "milan" or currency == "Kč" else "en"
 
     if df is None or df.empty:
         raise NoValidData("no usable rows after cleaning — check the file or the column mapping")
@@ -39,6 +62,7 @@ def run(source="uci", path=None, currency="£", use_llm=True, out="out/result.js
 
     meta = summary(df)
     meta["currency"] = currency
+    meta["source"] = source_label or "upload"
 
     feat = rfm_segments(build_features(df))
     km_labels, sil, _ = kmeans_segments(feat)
@@ -107,4 +131,7 @@ def run(source="uci", path=None, currency="£", use_llm=True, out="out/result.js
 
 if __name__ == "__main__":
     import sys
-    run(use_llm="--no-llm" not in sys.argv)
+    if "--config" in sys.argv:
+        run_config()            # uses config/segsmart.json (or $SEG_CONFIG)
+    else:
+        run(use_llm="--no-llm" not in sys.argv)

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SegSmart — data setup</title>
+<style>
+  :root{
+    --bg:#1e1b4b; --panel:#2a2660; --panel2:#322c75; --ink:#eef0ff;
+    --mut:#a9a7d4; --line:#403a86;
+    --teal:#2dd4bf; --purple:#a78bfa; --amber:#f59e0b; --lime:#84cc16; --red:#f87171;
+    --good:#34d399;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(160deg,#1a163f,#241f57);color:var(--ink);
+       font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:900px;margin:0 auto;padding:22px}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+  .logo{font-size:22px;font-weight:800;letter-spacing:.3px}
+  .logo span{color:var(--teal)}
+  .sub{color:var(--mut);font-size:13px}
+  .badge{margin-left:auto;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.4);
+         color:var(--good);padding:6px 12px;border-radius:999px;font-size:12.5px;font-weight:600}
+  a.nav{color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:9px;
+        padding:7px 14px;font-size:13px;font-weight:600}
+  a.nav:hover{border-color:var(--teal);color:var(--teal)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:16px}
+  h3{margin:0 0 6px;font-size:15px;font-weight:700}
+  .hint{color:var(--mut);font-size:12.5px;margin:4px 0 12px}
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+  button{background:var(--teal);color:#06281f;border:0;padding:9px 16px;border-radius:9px;font-weight:700;cursor:pointer}
+  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  input[type=file]{color:var(--mut);font-size:12.5px}
+  input[type=text],textarea,select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:7px;padding:7px 9px;font:13px/1.4 ui-monospace,Consolas,monospace;width:100%}
+  select{width:auto;font-family:inherit}
+  label.f{display:block;color:var(--mut);font-size:12px;margin:10px 0 0}
+  label.cur{color:var(--mut);font-size:12.5px}
+  label.cur input[type=text]{width:54px;font-family:inherit}
+  textarea{resize:vertical}
+  .status{font-size:12.5px;color:var(--amber)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{color:var(--mut);text-align:left;padding:4px 8px;font-weight:600}
+  td{padding:4px 8px}
+  .preview{overflow-x:auto;margin-top:10px;font-size:12px}
+  .preview td,.preview th{border-bottom:1px solid var(--line);white-space:nowrap;max-width:220px;
+    overflow:hidden;text-overflow:ellipsis}
+  .foot{color:#7c79b8;font-size:11.5px;text-align:center;margin:22px 0 6px}
+  .num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;
+    background:var(--teal);color:#06281f;font-size:13px;font-weight:800;margin-right:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Seg<span>Smart</span></div>
+    <div class="sub">data setup</div>
+    <div class="badge">🔒 Data stays on this machine</div>
+    <a class="nav" href="/">← Dashboard</a>
+  </header>
+
+  <!-- ============ 1 · upload a file ============ -->
+  <div class="card">
+    <h3><span class="num">1</span>Upload a file</h3>
+    <div class="hint">CSV, TSV or Excel — column names in any language, any encoding, any delimiter.
+      A local model proposes how it maps to our format; you confirm. Nothing leaves this machine.</div>
+    <div class="controls">
+      <input type="file" id="file" accept=".csv,.tsv,.txt,.xls,.xlsx">
+      <button id="analyze">Analyze my file ▸</button>
+      <span class="status" id="u_status"></span>
+    </div>
+    <div id="u_mapper" style="display:none;margin-top:16px">
+      <div id="u_detected" class="hint"></div>
+      <table><thead><tr><th>Our field</th><th>Your column</th></tr></thead>
+        <tbody id="u_maprows"></tbody></table>
+      <div class="controls" style="margin-top:12px">
+        <label class="cur">Currency <input type="text" id="u_currency"></label>
+        <label class="cur">Decimal <select id="u_decimal"><option value=".">.</option><option value=",">,</option></select></label>
+        <label class="cur">Language <select id="u_lang"><option value="en">en</option><option value="cs">cs</option><option value="de">de</option></select></label>
+        <label class="cur"><input type="checkbox" id="u_llm" checked> AI campaign copy</label>
+        <label class="cur"><input type="checkbox" id="u_remember" checked> remember as my data source</label>
+        <button id="u_run">Run with this mapping ▸</button>
+        <span class="status" id="u_run_status"></span>
+      </div>
+      <div class="hint">“Remember” stores the file under <code>data/uploads/</code> and writes the
+        config below, so the dashboard can refresh from it any time. Untick for a one-off look —
+        then nothing is written to disk.</div>
+    </div>
+  </div>
+
+  <!-- ============ 2 · connect a database ============ -->
+  <div class="card">
+    <h3><span class="num">2</span>Or connect a database</h3>
+    <div class="hint">Read-only SELECT against your shop database. Use <code>${ENV_VAR}</code> for
+      passwords/tokens — expanded from the environment at run time, never stored in the file.</div>
+    <label class="f">Type
+      <select id="c_type">
+        <option value="sql">SQL — MySQL / MariaDB / PostgreSQL / SQLite (Shoptet, WooCommerce, PrestaShop, Magento…)</option>
+        <option value="bigquery">Google BigQuery</option>
+        <option value="shoptet">Shoptet API</option>
+      </select></label>
+    <div id="f_sql">
+      <label class="f">Connection URL
+        <input type="text" id="c_url" placeholder="mysql+pymysql://user:${DB_PASSWORD}@host:3306/eshop"></label>
+      <label class="f">Query (order lines: customer, date, qty, price / total…)
+        <textarea id="c_query" rows="3" placeholder="SELECT email, order_no, created_at, qty, unit_price FROM order_lines"></textarea></label>
+    </div>
+    <div id="f_bigquery" style="display:none">
+      <label class="f">Project <input type="text" id="c_project" placeholder="my-gcp-project"></label>
+      <label class="f">Service-account JSON path (optional — else GOOGLE_APPLICATION_CREDENTIALS)
+        <input type="text" id="c_creds" placeholder="config/service-account.json"></label>
+      <label class="f">Query
+        <textarea id="c_bq_query" rows="3" placeholder="SELECT * FROM `project.dataset.order_lines`"></textarea></label>
+    </div>
+    <div id="f_shoptet" style="display:none">
+      <label class="f">API base URL <input type="text" id="c_base" placeholder="https://eshop.myshoptet.com/action/ApiOrders/"></label>
+      <label class="f">API token <input type="text" id="c_token" placeholder="${SHOPTET_TOKEN}"></label>
+    </div>
+    <div class="controls">
+      <button id="c_test">Test &amp; preview ▸</button>
+      <span class="status" id="c_status"></span>
+    </div>
+    <div id="c_previewbox" class="preview" style="display:none"></div>
+    <div id="c_mapper" style="display:none;margin-top:14px">
+      <div id="c_detected" class="hint"></div>
+      <table><thead><tr><th>Our field</th><th>Your column</th></tr></thead>
+        <tbody id="c_maprows"></tbody></table>
+      <div class="controls" style="margin-top:12px">
+        <label class="cur">Currency <input type="text" id="c_currency"></label>
+        <label class="cur">Decimal <select id="c_decimal"><option value=".">.</option><option value=",">,</option></select></label>
+        <label class="cur">Language <select id="c_lang"><option value="en">en</option><option value="cs">cs</option><option value="de">de</option></select></label>
+        <label class="cur"><input type="checkbox" id="c_llm" checked> AI campaign copy</label>
+        <button id="c_save">Save &amp; run ▸</button>
+        <span class="status" id="c_run_status"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 3 · the config file ============ -->
+  <div class="card">
+    <h3><span class="num">3</span>Configuration file</h3>
+    <div class="hint">Everything above is saved to <code id="cfg_path">config/segsmart.json</code> —
+      plain JSON, also editable by hand (re-read on every run, no restart needed).</div>
+    <textarea id="cfg_text" rows="12" spellcheck="false"></textarea>
+    <div class="controls">
+      <button class="ghost" id="cfg_reload">Reload</button>
+      <button id="cfg_save">Save config</button>
+      <button class="ghost" id="cfg_run">Run from config ▸</button>
+      <span class="status" id="cfg_status"></span>
+    </div>
+  </div>
+
+  <div class="foot">SegSmart · MBA Project 2026 · runs fully offline · <a href="/" style="color:#7c79b8">dashboard</a></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,
+  c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const CANON_FIELDS = [
+  ['customer_id','Customer (id / e-mail)',true],
+  ['order_id','Order / invoice id (optional)',false],
+  ['order_date','Order date',true],
+  ['quantity','Quantity (optional)',false],
+  ['unit_price','Unit price',false],
+  ['line_value','Line / order total (optional)',false],
+  ['product','Product (optional)',false],
+  ['country','Country (optional)',false],
+];
+
+function buildMapper(prefix, d){
+  const header=d.header||[];
+  const opt=sel=>['<option value="">— none —</option>']
+    .concat(header.map(h=>`<option value="${esc(h)}" ${h===sel?'selected':''}>${esc(h)}</option>`)).join('');
+  $('#'+prefix+'_maprows').innerHTML = CANON_FIELDS.map(([k,label,req])=>
+    `<tr><td>${label}${req?' <span style="color:var(--red)">*</span>':''}</td>`+
+    `<td><select data-k="${k}" style="min-width:200px">${opt((d.mapping||{})[k])}</select></td></tr>`).join('');
+  $('#'+prefix+'_currency').value = d.currency||'';
+  $('#'+prefix+'_decimal').value = d.decimal||'.';
+  $('#'+prefix+'_lang').value = d.language||'en';
+  const miss=(d.missing_required||[]);
+  $('#'+prefix+'_detected').innerHTML = miss.length
+    ? `⚠️ couldn't auto-detect: <b>${esc(miss.join(', '))}</b> — set them below`
+    : `✓ all required fields detected — review and run`;
+  $('#'+prefix+'_mapper').style.display='block';
+}
+
+function readMapper(prefix, statusEl){
+  const mapping={};
+  document.querySelectorAll('#'+prefix+'_maprows select').forEach(s=>{ if(s.value) mapping[s.dataset.k]=s.value; });
+  for(const [k,,req] of CANON_FIELDS) if(req && !mapping[k]){ statusEl.textContent='set '+k+' first'; return null; }
+  if(!mapping.unit_price && !mapping.line_value){ statusEl.textContent='set a unit price or a total column first'; return null; }
+  return mapping;
+}
+
+async function post(url, body){
+  const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  return r.json();
+}
+
+// ---------- 1 · upload ----------
+let uploadedB64='', uploadedName='';
+async function fileToB64(f){
+  const buf = new Uint8Array(await f.arrayBuffer());
+  let s='';
+  for(let i=0;i<buf.length;i+=0x8000) s += String.fromCharCode.apply(null, buf.subarray(i,i+0x8000));
+  return btoa(s);
+}
+
+$('#analyze').onclick = async ()=>{
+  const f=$('#file').files[0];
+  if(!f){ $('#u_status').textContent='pick a file first (CSV, TSV or Excel)'; return; }
+  uploadedB64 = await fileToB64(f); uploadedName = f.name;
+  $('#u_status').textContent='analyzing locally…';
+  try{
+    const d=await post('/api/infer_mapping',{file_b64:uploadedB64, filename:uploadedName, use_llm:true});
+    if(d.error){ $('#u_status').textContent='error: '+d.error; return; }
+    buildMapper('u', d);
+    $('#u_status').textContent='detected by '+(d.source||'heuristic')+' — please confirm ↓';
+  }catch(e){ $('#u_status').textContent='error: '+e; }
+};
+
+$('#u_run').onclick = async ()=>{
+  const st=$('#u_run_status');
+  const mapping=readMapper('u', st); if(!mapping) return;
+  const remember=$('#u_remember').checked;
+  st.textContent='running locally…';
+  try{
+    let j;
+    if(remember){
+      const config={
+        source:{type:'file', mapping, decimal:$('#u_decimal').value},
+        output:{currency:$('#u_currency').value||'€', language:$('#u_lang').value},
+        ai:{use_llm:$('#u_llm').checked}};
+      j=await post('/api/run_config',{config, file_b64:uploadedB64, filename:uploadedName, save:true});
+      loadConfig();
+    }else{
+      j=await post('/api/run',{file_b64:uploadedB64, filename:uploadedName, mapping,
+        use_llm:$('#u_llm').checked, currency:$('#u_currency').value||'€',
+        decimal:$('#u_decimal').value, language:$('#u_lang').value});
+    }
+    if(j.error){ st.textContent='error: '+j.error; return; }
+    st.innerHTML=`done ✓ (${j.kpis.total_customers} customers) — <a href="/" style="color:var(--teal)">view dashboard</a>`
+      + (remember?'':' · not saved');
+  }catch(e){ st.textContent='error: '+e; }
+};
+
+// ---------- 2 · connector ----------
+$('#c_type').onchange = ()=>{
+  const t=$('#c_type').value;
+  $('#f_sql').style.display = t==='sql'?'':'none';
+  $('#f_bigquery').style.display = t==='bigquery'?'':'none';
+  $('#f_shoptet').style.display = t==='shoptet'?'':'none';
+};
+
+function connectorSource(){
+  const t=$('#c_type').value;
+  if(t==='sql') return {type:'sql', connection_url:$('#c_url').value, query:$('#c_query').value};
+  if(t==='bigquery') return {type:'bigquery', project:$('#c_project').value,
+    credentials_path:$('#c_creds').value, query:$('#c_bq_query').value};
+  return {type:'shoptet', base_url:$('#c_base').value, api_token:$('#c_token').value};
+}
+
+$('#c_test').onclick = async ()=>{
+  $('#c_status').textContent='connecting…';
+  $('#c_previewbox').style.display='none'; $('#c_mapper').style.display='none';
+  try{
+    const d=await post('/api/preview_source',{source:connectorSource(), use_llm:true});
+    if(d.error){ $('#c_status').textContent='error: '+d.error; return; }
+    $('#c_status').textContent=`connected ✓ — ${d.total_rows.toLocaleString()} rows`;
+    $('#c_previewbox').style.display='block';
+    $('#c_previewbox').innerHTML = '<table><thead><tr>'
+      + d.header.map(h=>`<th>${esc(h)}</th>`).join('') + '</tr></thead><tbody>'
+      + d.preview.map(r=>'<tr>'+r.map(c=>`<td>${esc(c)}</td>`).join('')+'</tr>').join('')
+      + '</tbody></table>';
+    buildMapper('c', d);
+  }catch(e){ $('#c_status').textContent='error: '+e; }
+};
+
+$('#c_save').onclick = async ()=>{
+  const st=$('#c_run_status');
+  const mapping=readMapper('c', st); if(!mapping) return;
+  const source={...connectorSource(), mapping, decimal:$('#c_decimal').value};
+  const config={source,
+    output:{currency:$('#c_currency').value||'€', language:$('#c_lang').value},
+    ai:{use_llm:$('#c_llm').checked}};
+  st.textContent='saving & running…';
+  try{
+    const j=await post('/api/run_config',{config, save:true});
+    if(j.error){ st.textContent='error: '+j.error; return; }
+    loadConfig();
+    st.innerHTML=`done ✓ (${j.kpis.total_customers} customers) — <a href="/" style="color:var(--teal)">view dashboard</a>`;
+  }catch(e){ st.textContent='error: '+e; }
+};
+
+// ---------- 3 · raw config ----------
+async function loadConfig(){
+  try{
+    const r=await fetch('/api/config'); const d=await r.json();
+    $('#cfg_path').textContent=d.path;
+    $('#cfg_text').value=JSON.stringify(d.config, null, 2);
+  }catch(e){ $('#cfg_status').textContent='error: '+e; }
+}
+$('#cfg_reload').onclick=loadConfig;
+$('#cfg_save').onclick=async ()=>{
+  let cfg;
+  try{ cfg=JSON.parse($('#cfg_text').value); }
+  catch(e){ $('#cfg_status').textContent='not valid JSON: '+e.message; return; }
+  const d=await post('/api/config',{config:cfg});
+  $('#cfg_status').textContent = d.error?('error: '+d.error):('saved ✓ → '+d.saved);
+};
+$('#cfg_run').onclick=async ()=>{
+  $('#cfg_status').textContent='running from config…';
+  try{
+    const j=await post('/api/run_config',{save:false});
+    $('#cfg_status').innerHTML = j.error?('error: '+esc(j.error))
+      :`done ✓ (${j.kpis.total_customers} customers) — <a href="/" style="color:var(--teal)">view dashboard</a>`;
+  }catch(e){ $('#cfg_status').textContent='error: '+e; }
+};
+loadConfig();
+</script>
+</body>
+</html>

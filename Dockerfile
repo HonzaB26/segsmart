@@ -14,7 +14,8 @@ RUN python3.11 -m pip install --no-cache-dir -r requirements.txt
 # application code
 COPY seg/ ./seg/
 COPY gen/ ./gen/
-COPY pipeline.py server.py index.html docker-entrypoint.sh ./
+COPY pipeline.py server.py index.html setup.html docker-entrypoint.sh ./
+COPY config/segsmart.example.json ./config/
 # baked demo data so the dashboard works out-of-box (real exports come via
 # DB connectors or the UI upload — never baked into the shipped image)
 COPY data/sample_eshop.csv ./data/

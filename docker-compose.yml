@@ -19,6 +19,10 @@ services:
     build: .
     ports:
       - "8099:8099"
+    volumes:
+      # your data-source configuration + uploaded files survive restarts
+      - ./config:/app/config
+      - ./data/uploads:/app/data/uploads
     environment:
       - OLLAMA_URL=http://ollama:11434
       # gemma4:e4b = fast default. For top-quality Czech copy use qwen3.6:35b.

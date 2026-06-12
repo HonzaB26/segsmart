@@ -1,16 +1,23 @@
 """SegSmart local dashboard server (stdlib only — no cloud, no deps).
 
-GET  /              -> the dashboard
-GET  /api/result    -> cached out/result.json (instant)
-POST /api/run       -> run the pipeline live; optional CSV upload + column map
+GET  /                   -> the dashboard (results only)
+GET  /setup              -> data setup: upload a file or configure a connector
+GET  /api/result         -> cached out/result.json (instant)
+GET  /api/config         -> the local config file (config/segsmart.json)
+POST /api/config         -> save the config file
+POST /api/infer_mapping  -> propose a column mapping for an uploaded file
+POST /api/preview_source -> fetch a few rows from a configured source + mapping
+POST /api/run            -> ad-hoc run on an uploaded file (NOT persisted)
+POST /api/run_config     -> run from the saved config (persisted -> dashboard)
 
 Run:  python3 server.py     then open http://localhost:8099
-Everything — data, models, AI campaign copy — stays on this machine.
+Everything — data, config, models, AI campaign copy — stays on this machine.
 """
-import base64, json, os, tempfile
+import base64, json, os, re, tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pipeline
+from seg import config as cfgmod
 from seg.mapping import infer_mapping
 from seg.sniff import read_table
 from seg.util import NoValidData
@@ -38,6 +45,16 @@ class H(BaseHTTPRequestHandler):
         if self.path in ("/", "/index.html"):
             with open(os.path.join(HERE, "index.html"), "rb") as f:
                 return self._send(200, f.read(), "text/html; charset=utf-8")
+        if self.path in ("/setup", "/setup.html"):
+            with open(os.path.join(HERE, "setup.html"), "rb") as f:
+                return self._send(200, f.read(), "text/html; charset=utf-8")
+        if self.path == "/api/config":
+            try:
+                return self._send(200, json.dumps(
+                    {"path": cfgmod.CONFIG_PATH, "config": cfgmod.load_config()},
+                    ensure_ascii=False))
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}))
         if self.path == "/api/result":
             p = os.path.join(HERE, "out/result.json")
             if not os.path.exists(p):
@@ -81,6 +98,60 @@ class H(BaseHTTPRequestHandler):
                 out["sniff"] = info
                 return self._send(200, json.dumps(out, ensure_ascii=False))
             except NoValidData as e:
+                return self._send(400, json.dumps({"error": str(e)}))
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}))
+
+        # --- save the local config file ---
+        if self.path == "/api/config":
+            cfg = req.get("config")
+            if not isinstance(cfg, dict):
+                return self._send(400, json.dumps({"error": "body must be {config: {...}}"}))
+            try:
+                p = cfgmod.save_config(cfg)
+                return self._send(200, json.dumps({"saved": p}))
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}))
+
+        # --- preview a configured source: a few rows + a proposed mapping ---
+        if self.path == "/api/preview_source":
+            try:
+                raw = cfgmod.fetch_raw(req.get("source") or {})
+                head = raw.head(5).astype(str)
+                header = list(raw.columns)
+                samples = head.values.tolist()
+                out = infer_mapping(header, samples, use_llm=req.get("use_llm", True))
+                out["header"] = header
+                out["preview"] = samples
+                out["total_rows"] = int(len(raw))
+                return self._send(200, json.dumps(out, ensure_ascii=False))
+            except (NoValidData, ValueError) as e:      # bad config / non-SELECT
+                return self._send(400, json.dumps({"error": str(e)}))
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}))
+
+        # --- run from config (this installation's own data -> persisted) ---
+        if self.path == "/api/run_config":
+            try:
+                cfg = req.get("config")
+                if cfg is None:
+                    cfg = cfgmod.load_config()
+                # wizard upload being adopted as THE data source: store the
+                # file locally so future runs (and hand edits) can point at it
+                if req.get("file_b64"):
+                    os.makedirs(os.path.join(HERE, "data/uploads"), exist_ok=True)
+                    safe = re.sub(r"[^\w.\-]", "_", os.path.basename(
+                        req.get("filename") or "upload.csv")) or "upload.csv"
+                    dest = os.path.join("data/uploads", safe)
+                    with open(os.path.join(HERE, dest), "wb") as f:
+                        f.write(base64.b64decode(req["file_b64"]))
+                    cfg.setdefault("source", {})
+                    cfg["source"].update({"type": "file", "path": dest})
+                if req.get("save", True):
+                    cfgmod.save_config(cfg)
+                res = pipeline.run_config(cfg)
+                return self._send(200, json.dumps(res, ensure_ascii=False))
+            except (NoValidData, ValueError) as e:      # bad config / non-SELECT
                 return self._send(400, json.dumps({"error": str(e)}))
             except Exception as e:
                 return self._send(500, json.dumps({"error": str(e)}))

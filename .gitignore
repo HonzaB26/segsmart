@@ -3,7 +3,10 @@ data/*.csv
 data/*.xlsx
 data/*.parquet
 data/*.zip
+data/uploads/
 !data/.gitkeep
+# user-local configuration (may reference private DBs); the example ships
+config/segsmart.json
 # a small, non-proprietary synthetic sample so clone→run works with zero setup
 !data/sample_eshop.csv
 # intermediate run artifacts (keep out/result.json as the baked demo)

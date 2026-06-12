@@ -1,0 +1,34 @@
+{
+  "_comment": "Copy to config/segsmart.json (or edit via the /setup page). ${ENV_VAR} is expanded from the environment at run time — keep passwords/tokens there, not here. The file is re-read on every run.",
+
+  "source": {
+    "type": "file",
+    "path": "data/sample_eshop.csv",
+    "mapping": {
+      "customer_id": "customer_key",
+      "order_id": "order_id",
+      "order_date": "order_datetime",
+      "quantity": "product_quantity",
+      "unit_price": "unit_price",
+      "line_value": "revenue_per_line",
+      "product": "product_id",
+      "country": "country"
+    },
+    "decimal": ",",
+
+    "_sql_example": {
+      "type": "sql",
+      "connection_url": "mysql+pymysql://reader:${DB_PASSWORD}@localhost:3306/eshop",
+      "query": "SELECT email, order_no, created_at, qty, unit_price FROM order_lines"
+    },
+    "_bigquery_example": {
+      "type": "bigquery",
+      "project": "my-gcp-project",
+      "credentials_path": "config/service-account.json",
+      "query": "SELECT * FROM `my-gcp-project.shop.order_lines`"
+    }
+  },
+
+  "output": { "currency": "Kč", "language": "cs" },
+  "ai": { "use_llm": true }
+}

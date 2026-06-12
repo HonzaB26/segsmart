@@ -11,6 +11,9 @@ control. No cloud, no subscription, no customer data leaving the building.
 
 ![SegSmart dashboard](docs/dashboard.png)
 
+*(Data onboarding — file upload with AI column mapping, or a database connector —
+lives on its own page: [`/setup`](docs/setup.png).)*
+
 ---
 
 ## Why local-first is the whole point
@@ -147,34 +150,49 @@ docker compose exec ollama ollama pull qwen3.6:35b    # quality Czech copy
 Or set `SEG_AUTOPULL=1` in `docker-compose.yml` to pull on first boot. The base image
 is openSUSE Leap. For GPU inference, uncomment the `deploy` block in the compose file.
 
-### Connectors (point it at your real data)
+### Point it at your real data (`/setup`)
 
-```python
-from seg.connectors import sql_connector, bigquery_connector
-import pipeline
+The UI is two pages: **`/`** is the dashboard (results only); **`/setup`** is where
+data comes from. There you either **upload a file** (CSV/TSV/Excel — any language,
+encoding or delimiter; a local model proposes the column mapping, you confirm) or
+**configure a connector** (SQL for MySQL/MariaDB/PostgreSQL/SQLite — which covers
+Shoptet, WooCommerce, PrestaShop, Magento — plus BigQuery and the Shoptet API),
+test it against your database, confirm the mapping, save.
 
-# MySQL — Shoptet / WooCommerce / PrestaShop / Magento (and Postgres, SQLite)
-df = sql_connector(
-    "mysql+pymysql://user:pass@host/eshop",
-    "SELECT * FROM order_lines",
-    mapping={"customer_id": "email", "order_id": "order_code",
-             "order_date": "created_at", "quantity": "qty",
-             "unit_price": "price", "product": "sku"})
+Either way the choice lands in a **local config file**:
 
-# BigQuery
-df = bigquery_connector("SELECT * FROM `project.dataset.orders`",
-                        mapping=...)   # see connectors.MILAN_BQ_MAPPING
+```jsonc
+// config/segsmart.json — plain JSON, hand-editable, re-read on every run
+{
+  "source": {
+    "type": "sql",
+    "connection_url": "mysql+pymysql://reader:${DB_PASSWORD}@localhost/eshop",
+    "query": "SELECT email, order_no, created_at, qty, unit_price FROM order_lines",
+    "mapping": {"customer_id": "email", "order_id": "order_no",
+                "order_date": "created_at", "quantity": "qty", "unit_price": "price"}
+  },
+  "output": {"currency": "Kč", "language": "cs"},
+  "ai": {"use_llm": true}
+}
 ```
 
-A `mapping` is `{canonical_name: source_column}` — the only thing you write per shop.
-Connector deps (`sqlalchemy`, `google-cloud-bigquery`, `requests`) are imported
-lazily; install only what your deployment uses.
+`${ENV_VAR}` references are expanded from the environment at run time, so secrets
+never sit in the file. See `config/segsmart.example.json`. Headless runs use the
+same file: `python3 pipeline.py --config`. Connector queries are checked to be
+read-only (single SELECT/WITH) — still, use read-only DB credentials.
+
+The connectors are also a Python API (`seg.connectors`) for notebooks; a `mapping`
+is `{canonical_name: source_column}` — the only thing you write per shop. Connector
+deps (`sqlalchemy`, `google-cloud-bigquery`, `requests`) are imported lazily;
+install only what your deployment uses.
 
 ### Configuration (env)
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `SEG_PORT` | `8099` | dashboard port |
+| `SEG_HOST` | `127.0.0.1` | bind address (`0.0.0.0` in Docker) |
+| `SEG_CONFIG` | `config/segsmart.json` | data-source config file |
 | `OLLAMA_URL` | `http://localhost:11434` | local LLM endpoint (`http://ollama:11434` in compose) |
 | `SEG_LLM_MODEL` | `gemma4:e4b` | campaign model (`qwen3.6:35b` for quality Czech) |
 | `SEG_AUTOPULL` | `0` | pull the model on container start |
