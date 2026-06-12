@@ -47,6 +47,9 @@ The local model isn't a compromise. It's the moat.
 
 ## Design
 
+*Deep dive with the full schema and rationale: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Working on the code (human or agent)? Start with [AGENTS.md](AGENTS.md).*
+
 ### One canonical schema, many sources
 
 Everything downstream consumes a single **order-line frame**:

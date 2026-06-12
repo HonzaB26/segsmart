@@ -48,5 +48,7 @@ the whole point of the seam.
 
 ## PRs
 
-Branch, commit, open a PR against `main`. Describe what and why. CI is light — just
-make sure the standalone module runs above still work.
+Branch, commit, open a PR against `main`. Describe what and why. CI runs the
+full pytest suite (`python3 -m pytest` — offline, a few seconds); keep it green.
+For the lay of the land see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); if
+you're pointing a coding agent at the repo, it reads [AGENTS.md](AGENTS.md).

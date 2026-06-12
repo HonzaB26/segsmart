@@ -1,0 +1,176 @@
+# SegSmart architecture
+
+A walking tour for humans. The agent-facing rules are in
+[AGENTS.md](../AGENTS.md); the pitch and quickstart in [README.md](../README.md).
+
+## The one idea
+
+Competing segmentation tools are SaaS: the SME ships its customer database to
+someone else's cloud. SegSmart inverts that — **the software comes to the
+data**. Everything below (parsing, features, clustering, even the LLM that
+writes campaign copy) runs on the customer's own machine. Local isn't a
+constraint we tolerate; it's the moat: a GDPR answer no SaaS competitor can
+copy without abandoning their business model.
+
+That single decision explains most of the design: stdlib HTTP server, no CDN
+assets, single-file HTML, Ollama sidecar instead of an API key, a config file
+on disk instead of an account.
+
+## The big picture
+
+```
+                       INGESTION (the moat's gatehouse)
+  ┌───────────────────────────────────────────────────────────────┐
+  │  upload (CSV/TSV/XLSX, any encoding/delimiter/language)       │
+  │  SQL (MySQL/Postgres/SQLite → Shoptet, WooCommerce, Presta…)  │
+  │  BigQuery · Shoptet API · built-in samples                    │
+  └───────────────┬───────────────────────────────────────────────┘
+                  ▼
+   seg/sniff.py        bytes → raw frame      (encoding cascade, delimiter
+                                               sniff, preamble skip, Excel)
+   seg/mapping.py      raw header+samples → proposed column mapping
+                                              (local LLM + multilingual
+                                               heuristic fallback)
+   seg/loader.py       raw frame + mapping → ★ CANONICAL ORDER-LINE FRAME ★
+                                              (synthesis of missing columns,
+                                               EU/US dates, decimal commas,
+                                               cancellation filtering)
+                  │
+                  ▼            ANALYTICS (source-agnostic from here on)
+   seg/features.py     per-customer RFM + behavior (AOV, basket, tenure,
+                       product diversity, interpurchase gap)
+   seg/segment.py      ① RFM quantile rules → 5 named segments
+                       ② KMeans on log-scaled features (cross-check)
+                       validation: silhouette + adjusted Rand index ①↔②
+   seg/seasonality.py  revenue index by calendar month (exposure-normalized)
+                  │
+                  ▼            NARRATIVE
+   seg/campaigns.py    local LLM (Ollama) drafts one campaign card per
+                       segment, EN/CS; impact estimates & priority are
+                       DETERMINISTIC (the model writes copy, never numbers)
+                  │
+                  ▼
+   pipeline.py         orchestrates the above → out/result.json
+   server.py           stdlib HTTP: serves the JSON + two pages
+   index.html          /        the dashboard (results only)
+   setup.html          /setup   data onboarding + config editor
+```
+
+## The canonical frame — the architectural seam
+
+Every source funnels into one shape, and everything downstream consumes only
+that shape:
+
+| column | type | notes |
+|---|---|---|
+| `customer_id` | str | email, hash, phone — whatever identifies the buyer |
+| `order_id` | str | synthesized (customer+day) when the export has none |
+| `order_date` | datetime | EU/US autodetected; Excel serials; unix epochs |
+| `quantity` | float | defaults to 1 when absent |
+| `unit_price` | float | derived from `line_value`/`quantity` when absent |
+| `line_value` | float | the export's total wins over qty×price when present |
+| `product` | str | optional; `is_product=False` lines (coupons) excluded from diversity counts |
+| `country` | str | optional |
+
+Truly required from any source: **who, when, and some money column**. The rest
+is synthesized. Adding a data source means writing a fetch + a
+`{canonical: source_column}` mapping — the analytics never change. This is the
+single most load-bearing decision in the codebase.
+
+The robustness contract is executable: `tests/test_messy.py` encodes the same
+transactions twelve hostile ways (cp1250 + semicolons, BOM, order-grain
+totals-only, no order ids, preamble junk, broken dates, Excel, serial dates,
+ambiguous d/m, tabs, currency noise, duplicate headers) and asserts they all
+converge to identical numbers.
+
+## Why two segmentation algorithms
+
+RFM quantile rules give **interpretable, named** segments (Champions, Loyal,
+At-risk, New, Dormant) an SME owner can act on. KMeans on the feature matrix
+finds **whatever geometry is actually there**. Neither is ground truth; their
+*agreement* (adjusted Rand index) plus the KMeans silhouette is the honesty
+metric shown on the dashboard. On a real 2-month export ARI collapses to ~0.06
+— the pipeline visibly tells you the data window is too short, instead of
+inventing segments.
+
+## The two-model LLM strategy
+
+| | model | role |
+|---|---|---|
+| fast | `gemma4:e4b` (~4 B) | interactive mapping inference, quick cards |
+| quality | `qwen3.6:35b` MoE | polished Czech campaign copy (CPU-slow, batch) |
+
+A rule-based fallback writes the cards when no model is reachable, so the
+product never hard-depends on the LLM. Two hard lines: model output is
+untrusted (escaped in the UI, JSON extracted defensively), and **numbers are
+never the model's** — response-rate assumptions and priority ranking are
+deterministic and printed on the card.
+
+## Configuration & persistence
+
+`config/segsmart.json` — plain JSON, owned by the user, hand-editable,
+**re-read on every run** (no restart). `${ENV_VAR}` references expand at use
+time so secrets live in the environment, not the file. The `/setup` page is
+just a friendly editor for this file plus test-and-preview for connectors.
+
+Persistence rule: a run from the saved config writes `out/result.json` (your
+configured source *is* your dashboard); an ad-hoc wizard upload renders once
+and leaves nothing on disk.
+
+## Server & security model
+
+`server.py` is ~200 lines of stdlib `http.server`:
+
+| route | method | role |
+|---|---|---|
+| `/`, `/setup` | GET | the two pages |
+| `/api/result` | GET | cached result JSON |
+| `/api/config` | GET/POST | read / write the config file |
+| `/api/infer_mapping` | POST | uploaded bytes → proposed mapping |
+| `/api/preview_source` | POST | connector test: first rows + mapping |
+| `/api/run` | POST | ad-hoc upload run (not persisted) |
+| `/api/run_config` | POST | run from config (persisted) |
+
+Defence layers (sized for a data-handling tool on an SME machine):
+binds `127.0.0.1` unless told otherwise · optional HTTP Basic Auth (`SEG_AUTH`)
+over every route — the results are customer revenue data · upload size cap ·
+uploads handled as bytes and deleted after ad-hoc runs · all LLM/CSV-derived
+strings escaped in the UI · connector queries restricted to a single
+SELECT/WITH · Docker runs as a non-root user. For exposure beyond a trusted
+LAN, terminate TLS in a reverse proxy in front.
+
+## Deployment
+
+```
+docker compose up --build
+┌────────────────────────── customer's machine ─────────────────────────┐
+│  ┌────────────────┐  OLLAMA_URL   ┌──────────────────┐                │
+│  │ segsmart       │ ────────────▶ │ ollama (sidecar) │                │
+│  │ openSUSE Leap  │               │ gemma4 / qwen3.6 │                │
+│  │ python3.11     │               └──────────────────┘                │
+│  │ non-root, :8099│   volumes: ./config  ./data/uploads               │
+│  └────────────────┘                                                   │
+│        ▲ browser on the LAN (SEG_AUTH recommended)                    │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+No GPU required (CPU inference works; quality model is just slower). The image
+bakes a synthetic demo so the dashboard renders before any real data is
+connected.
+
+## Synthetic data (`gen/`)
+
+Milan's real export is gitignored; what ships is a generator matching his
+exact BigQuery schema: a **templated** (deliberately not LLM-generated —
+local models produced broken Czech) drogerie catalog and archetype-driven
+customers (champion/loyal/B2B/new/at-risk/dormant) over a 20-month window with
+a Christmas peak. The real-vs-synthetic contrast is itself a finding: 2 months
+of real data can't show segmentation; 20 synthetic months can.
+
+## Testing philosophy
+
+~100 pytest cases, all offline, a few seconds total. Three layers: unit tests
+per module, the messy-ingestion convergence battery, and regression tests
+pinning every bug found by code review or live use (tie-aware scoring, the
+C-invoice rule that once silently deleted whole exports, auth, read-only
+guards). CI runs the suite on every push.
