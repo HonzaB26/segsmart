@@ -163,16 +163,23 @@ class H(BaseHTTPRequestHandler):
                 if not recipients:
                     return self._send(400, json.dumps(
                         {"error": "no recipients — run a segmentation first"}))
-                # explicit confirmation required — launch can hit a live mailer
-                # webhook; one accidental click must never mail a whole segment
-                if req.get("confirm") is not True:
-                    return self._send(400, json.dumps(
-                        {"error": "confirmation required",
-                         "confirm_needed": True,
-                         "recipients": len(recipients)}))
                 mailing = build_mailing(card, recipients,
                                         lang=req.get("language", "en"),
                                         currency=req.get("currency", "£"))
+                # explicit confirmation required — launch can hit a live mailer
+                # webhook; one accidental click must never mail a whole segment.
+                # The unconfirmed call returns the EXACT e-mail for review
+                # (subject + body + counts), saving and delivering nothing.
+                if req.get("confirm") is not True:
+                    return self._send(200, json.dumps(
+                        {"confirm_needed": True,
+                         "subject": mailing["subject"],
+                         "body_text": mailing["body_text"],
+                         "recipients": len(mailing["recipients"]),
+                         "deliverable": mailing["deliverable"],
+                         "webhook_configured": bool(
+                             (cfgmod.load_config().get("mailer") or {})
+                             .get("webhook_url"))}, ensure_ascii=False))
                 path = save_mailing(mailing)
                 report = deliver(mailing, (cfgmod.load_config().get("mailer")))
                 return self._send(200, json.dumps(

@@ -124,10 +124,11 @@ mailer can consume the file directly; the UI also offers the same list as an
 import-ready CSV. Written to `out/mailings/` (never git-tracked)
 and optionally POSTed to `config.mailer.webhook_url` — the seam where n8n,
 Zapier, or a ten-line SMTP script plugs in. SegSmart itself never sends
-anything; launch *is* the human gate — and it is double-locked: the UI asks
-for a confirming second click (stating the recipient count and whether a live
-webhook will fire), and `/api/launch` refuses without `confirm: true`, so no
-single stray click can mail a whole segment.
+anything; launch *is* the human gate — and it is double-locked: the first
+click fetches a preview of the EXACT e-mail (subject, body, recipient counts,
+whether a live webhook will fire) for review, and only an explicit confirm —
+enforced by the API (`confirm: true`), not just the UI — saves and delivers.
+No single stray click can mail a whole segment.
 
 ## Two languages, two knobs
 

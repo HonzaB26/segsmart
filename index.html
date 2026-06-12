@@ -84,6 +84,11 @@
   .drill td{padding:4px 8px;border-bottom:1px solid var(--line)}
   .mig{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
   .mig span{background:var(--panel2);border-radius:999px;padding:5px 12px;font-size:12.5px}
+  .pvbox{background:var(--panel);border:1px solid rgba(245,158,11,.45);border-radius:10px;
+         padding:10px 12px;margin-top:8px;font-size:12.5px}
+  .pvbox .pvwarn{color:#fcd34d;margin-bottom:6px}
+  .pvbox .pvbody{white-space:pre-wrap;background:var(--panel2);border-radius:8px;
+                 padding:8px 10px;margin:6px 0 0;font:12px/1.5 inherit;color:var(--ink)}
   .camp{cursor:pointer;transition:border-color .12s,transform .12s,box-shadow .12s}
   .camp:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.28)}
   .camp:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
@@ -229,8 +234,9 @@ en:{
   need_value:'enter the discount value', need_code:'enter the code from your shop system',
   regenerating:'regenerating…', launching:'launching…',
   recipients:'recipients', with_email:'with e-mail', download:'download',
-  confirm_launch:'⚠ Send to {n} recipients{hook}? Click 🚀 again to confirm',
-  hook_live:' — your mailer webhook WILL be called', hook_file:' (saves a file, no mailer configured)',
+  confirm_launch:'⚠ This will go to {n} recipients ({d} with e-mail){hook}.',
+  hook_live:' — your mailer webhook WILL be called', hook_file:' — saves a file, no mailer configured',
+  pv_subject:'Subject', b_confirm:'🚀 Confirm & launch', b_cancel:'Cancel',
   drill_title:'{s} — {n} customers',
   drill_note:'showing top 50 by spend; the CSV has all {n}',
   dt_cust:'customer', dt_days:'days since last order', dt_orders:'orders', dt_spent:'total spent',
@@ -289,8 +295,9 @@ cs:{
   need_value:'zadejte výši slevy', need_code:'zadejte kód z vašeho e-shopu',
   regenerating:'přegenerovávám…', launching:'spouštím…',
   recipients:'příjemců', with_email:'s e-mailem', download:'stáhnout',
-  confirm_launch:'⚠ Odeslat {n} příjemcům{hook}? Potvrďte dalším kliknutím na 🚀',
-  hook_live:' – zavolá se váš mailer webhook', hook_file:' (jen uloží soubor, mailer není nastaven)',
+  confirm_launch:'⚠ Půjde {n} příjemcům ({d} s e-mailem){hook}.',
+  hook_live:' – zavolá se váš mailer webhook', hook_file:' – jen uloží soubor, mailer není nastaven',
+  pv_subject:'Předmět', b_confirm:'🚀 Potvrdit a spustit', b_cancel:'Zrušit',
   drill_title:'{s} – {n} zákazníků',
   drill_note:'zobrazeno top 50 podle útraty; CSV obsahuje všech {n}',
   dt_cust:'zákazník', dt_days:'dní od posledního nákupu', dt_orders:'objednávek', dt_spent:'celkem utraceno',
@@ -442,11 +449,7 @@ function render(r){
 
 // campaign cards: render + owner-discount workflow + launch
 let CUR=null;   // last rendered result (campaign/launch handlers need it)
-let MAILER_ON=false;          // is a mailer webhook configured? (confirm wording)
-const LAUNCH_ARMED={};        // card index -> timestamp of first launch click
-fetch('/api/config').then(r=>r.json()).then(d=>{
-  MAILER_ON=!!(((d.config||{}).mailer||{}).webhook_url);
-}).catch(()=>{});
+
 function renderCampaigns(r){
   CUR=r;
   const c = r.meta.currency||'£';
@@ -516,16 +519,37 @@ async function cardAction(act, i){
   if(act==='launch'){
     const recipients=(CUR.customers||[]).filter(x=>x.segment===cp.segment)
       .map(x=>({id:x.id, email:x.email||'', name:x.name||''}));
-    // two-click confirmation: a single stray click must never mail a segment
-    if(!LAUNCH_ARMED[i] || Date.now()-LAUNCH_ARMED[i] > 8000){
-      LAUNCH_ARMED[i]=Date.now();
-      st.textContent=tf('confirm_launch', {n:recipients.length,
-        hook:MAILER_ON?t('hook_live'):t('hook_file')});
-      setTimeout(()=>{ if(LAUNCH_ARMED[i] && Date.now()-LAUNCH_ARMED[i]>=8000){
-        delete LAUNCH_ARMED[i]; if(st.textContent.startsWith('⚠')) st.textContent=''; }}, 8200);
-      return;
-    }
-    delete LAUNCH_ARMED[i];
+    // step 1: ask the server for the EXACT e-mail and show it for review —
+    // nothing is saved or delivered until the user confirms
+    st.textContent=t('launching');
+    let pv;
+    try{
+      const r=await fetch('/api/launch',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({card:cp, recipients, language:lang, currency:cur})});
+      pv=await r.json();
+      if(pv.error){ st.textContent='error: '+pv.error; return; }
+    }catch(e){ st.textContent='error: '+e; return; }
+    st.textContent='';
+    const box=document.createElement('div');
+    box.className='pvbox';
+    box.innerHTML=
+      `<div class="pvwarn">${tf('confirm_launch',{n:pv.recipients, d:pv.deliverable,
+        hook:pv.webhook_configured?t('hook_live'):t('hook_file')})}</div>`
+      +`<div class="pvsub"><b>${t('pv_subject')}:</b> ${esc(pv.subject)}</div>`
+      +`<pre class="pvbody">${esc(pv.body_text)}</pre>`
+      +`<div class="controls" style="margin-top:8px">
+         <button class="pvgo" style="padding:5px 10px;font-size:12px">${t('b_confirm')}</button>
+         <button class="ghost pvno" style="padding:5px 10px;font-size:12px">${t('b_cancel')}</button>
+       </div>`;
+    form.parentNode.insertBefore(box, form.nextSibling);
+    box.querySelector('.pvno').onclick=()=>box.remove();
+    box.querySelector('.pvgo').onclick=()=>doLaunch(i, cp, recipients, lang, cur, st, box);
+    return;
+  }
+}
+
+async function doLaunch(i, cp, recipients, lang, cur, st, box){
+    box.remove();
     st.textContent=t('launching');
     try{
       const r=await fetch('/api/launch',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -550,7 +574,6 @@ async function cardAction(act, i){
         [x.email||'', x.name||'', x.customer_id, m.subject].map(qcsv).join(',')).join('\n');
       st.appendChild(mk('CSV', csv, base+'-recipients.csv', 'text/csv'));
     }catch(e){ st.textContent='error: '+e; }
-  }
 }
 
 // formula-injection guard: a customer id like "=HYPERLINK(...)" must not

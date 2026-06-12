@@ -48,7 +48,7 @@ The local model isn't a compromise. It's the moat.
 | **Launch** | An approved card becomes a mailing artifact — subject, body, recipients **with e-mail + name** — in `out/mailings/` (+ import-ready CSV), optionally POSTed to your mailer webhook (n8n / Zapier / own script) |
 | **Bilingual** | UI toggle EN/CS (incl. Czech months, segment names, number formats); campaign/warning language set separately per run |
 | **Impact estimates** | Computed deterministically (transparent response-rate assumptions), never hallucinated |
-| **Human gate** | Campaigns are drafts the owner approves — nothing sends automatically, and Launch needs a double-click confirmation (enforced by the API, not just the UI) |
+| **Human gate** | Campaigns are drafts the owner approves — nothing sends automatically; Launch first shows the exact e-mail (subject + body + recipient counts) and needs explicit confirmation, enforced by the API |
 | **Data honesty** | Ingest report (rows kept/dropped & why) + warnings when the data can't support conclusions (short window, suspicious money values, weak cluster agreement) |
 | **Action lists** | Click a segment → the actual customers, exportable as CSV for your mailing tool |
 | **Trend tracking** | Each run snapshots per-customer segments; the next run shows who moved (Champions → At-risk is your churn alarm) |

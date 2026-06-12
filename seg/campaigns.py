@@ -128,9 +128,11 @@ def _sanitize_card(c: dict, keep: str | None = None) -> dict:
     return c
 
 
-# a concrete discount the owner never set: '15 %', '20% off', '100 Kč sleva'…
+# a concrete discount the owner never set: '15 %', '20% off', '100 Kč sleva',
+# and qwen's malformed currency-first 'Kč3000' / '€50'
 _INVENTED_DISCOUNT = re.compile(
-    r"\d+\s*%|\d+\s*(?:kč|czk|eur|€|\$|£)\b", re.IGNORECASE)
+    r"\d+\s*%|\d+\s*(?:kč|czk|eur|€|\$|£)\b|(?:kč|czk|eur|€|\$|£)\s*\d+",
+    re.IGNORECASE)
 
 
 def has_invented_discount(c: dict) -> bool:

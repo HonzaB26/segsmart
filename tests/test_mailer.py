@@ -252,3 +252,11 @@ def test_email_shaped_id_used_as_fallback():
     })
     res = pipeline.analyze(load_dataframe(raw, {}), use_llm=False, out=None)
     assert all(c["email"] == c["id"] for c in res["customers"])
+
+
+def test_invented_discount_currency_first():
+    # qwen writes malformed currency-first amounts ('Kč3000') — must be caught
+    from seg.campaigns import has_invented_discount
+    assert has_invented_discount({"offer": "Doprava zdarma nad Kč3000 a poukaz Kč500."})
+    assert has_invented_discount({"offer": "€50 voucher for you"})
+    assert not has_invented_discount({"offer": "VIP přístup k novinkám a dárek"})
