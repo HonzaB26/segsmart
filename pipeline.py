@@ -223,6 +223,21 @@ def analyze(df, currency="£", use_llm=True, out="out/result.json",
     sidx = seasonality_index(df)
     hook = peak_hook(df)
 
+    # daily sales series (date + revenue + orders, no PII) — stored so that an
+    # owner-uploaded external-factors CSV can be scored against it later via
+    # /api/external_impact without re-reading customer data. No network call.
+    try:
+        from seg.external import daily_sales
+        _ds = daily_sales(df)
+        external = {
+            "daily": [{"date": d.strftime("%Y-%m-%d"), "revenue": round(float(r), 2),
+                       "orders": int(o)}
+                      for d, r, o in zip(_ds["date"], _ds["revenue"], _ds["orders"])],
+        }
+    except Exception as e:
+        print(f"  [daily sales series skipped: {e}]")
+        external = {"daily": []}
+
     # AI campaign cards (local LLM)
     cards = all_cards(prof, hook, use_llm=use_llm, currency=currency, lang=lang)
     kpis["ai_campaigns"] = len(cards)
@@ -248,6 +263,7 @@ def analyze(df, currency="£", use_llm=True, out="out/result.json",
             "hook": hook,
         },
         "campaigns": cards,
+        "external": external,
         "validation": {
             "kmeans_silhouette": round(sil, 3) if sil is not None else None,
             "rfm_kmeans_ari": round(ari, 3),

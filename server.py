@@ -9,6 +9,8 @@ POST /api/infer_mapping  -> propose a column mapping for an uploaded file
 POST /api/preview_source -> fetch a few rows from a configured source + mapping
 POST /api/run            -> ad-hoc run on an uploaded file (NOT persisted)
 POST /api/run_config     -> run from the saved config (persisted -> dashboard)
+POST /api/external_impact-> score an uploaded daily external-factors CSV against
+                            the current run's daily revenue (no customer data read)
 POST /api/refine_card    -> rewrite a campaign card with an owner-set discount
 POST /api/launch         -> approved card -> mailing artifact in out/mailings/
                             (+ optional POST to config mailer.webhook_url)
@@ -189,6 +191,29 @@ class H(BaseHTTPRequestHandler):
                     {"saved": path, "recipients": len(mailing["recipients"]),
                      "deliverable": mailing["deliverable"],
                      "delivery": report, "mailing": mailing}, ensure_ascii=False))
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}))
+
+        # --- score an uploaded external-factors CSV against the current run ---
+        # privacy-preserving: joins the user's daily factors onto the persisted
+        # daily REVENUE aggregate (no customer data needed or read here)
+        if self.path == "/api/external_impact":
+            try:
+                data, fname = _upload_bytes()
+                if not data:
+                    return self._send(400, json.dumps({"error": "empty upload"}))
+                p = os.path.join(HERE, "out/result.json")
+                if not os.path.exists(p):
+                    return self._send(400, json.dumps(
+                        {"error": "no result yet — run a segmentation first"}))
+                with open(p, encoding="utf-8") as f:
+                    daily = (json.load(f).get("external") or {}).get("daily") or []
+                if not daily:
+                    return self._send(400, json.dumps(
+                        {"error": "the current result has no daily sales series to score against"}))
+                from seg.external import impact_from_daily
+                out = impact_from_daily(daily, data.decode("utf-8", "replace"))
+                return self._send(200, json.dumps(out, ensure_ascii=False))
             except Exception as e:
                 return self._send(500, json.dumps({"error": str(e)}))
 

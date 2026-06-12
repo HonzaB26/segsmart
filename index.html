@@ -114,6 +114,19 @@
   .modal .estbox .big{font-size:24px;font-weight:800;color:var(--teal);margin-bottom:4px}
   .modal .formula{color:var(--mut);font-size:12px;margin-top:8px;font-family:ui-monospace,Consolas,monospace}
   .modal .note{color:#7c79b8;font-size:11.5px;margin-top:16px}
+  .drv{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+  .drv .row{display:flex;align-items:center;gap:10px;font-size:13px}
+  .drv .nm{min-width:130px;font-weight:600}
+  .drv .barwrap{flex:1;background:var(--panel2);border-radius:6px;height:16px;position:relative;overflow:hidden}
+  .drv .fill{position:absolute;top:0;bottom:0;border-radius:6px}
+  .drv .fill.up{background:var(--good)} .drv .fill.down{background:var(--red)}
+  .drv .vv{min-width:96px;text-align:right;color:var(--mut);font-variant-numeric:tabular-nums}
+  .drv .tag{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+  .drvsrc{color:#7c79b8;font-size:11.5px;margin-top:10px}
+  .upload{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}
+  .upload .lbl{font-size:12.5px;color:var(--mut);margin-bottom:8px}
+  .upload .ctl{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  #extStatus{font-size:12px;color:var(--amber);margin-top:8px}
 </style>
 </head>
 <body>
@@ -163,6 +176,21 @@
       <h3 style="margin-top:20px" data-i="h_validation">Validation</h3>
       <div class="valrow" id="validation"></div>
       <div class="hint" id="ingest"></div>
+    </div>
+  </div>
+
+  <div class="card" id="extcard" style="margin-top:16px">
+    <h3>External drivers <span class="sub" id="exttag"></span></h3>
+    <div class="hint" style="margin-bottom:10px">Upload a daily CSV to measure how your own external factors move revenue — ad spend, promo days, exchange rate, weather, competitor events, etc. The CSV needs a date column and at least one numeric or 0/1 factor column. Scored entirely on this machine against your daily revenue.</div>
+    <div class="drv" id="drivers"></div>
+    <div class="drvsrc" id="extsrc"></div>
+    <div class="upload">
+      <div class="ctl">
+        <input type="file" id="extfile" accept=".csv,text/csv">
+        <button id="extrun">Score factors</button>
+        <button class="ghost" id="extreset" style="display:none">Clear</button>
+      </div>
+      <div id="extStatus"></div>
     </div>
   </div>
 
@@ -445,7 +473,59 @@ function render(r){
     [fmtDec(v.rfm_kmeans_ari), t('val_ari'), t('val_ari_s')],
     [fmtNum(v.n_customers), t('val_n'), t('val_n_s')],
   ].map(([b,l,s])=>`<div class="val"><b>${b}</b><small>${l}</small><small>${s}</small></div>`).join('');
+
 }
+
+// external drivers: score owner-uploaded daily factors against revenue
+function factorMagnitude(f){
+  return f.type==='flag' ? Math.abs(f.effect_pct||0) : Math.abs((f.correlation||0)*100);
+}
+function renderExternal(ext, uploadedLabel){
+  const impact = (ext||{}).impact || [];
+  $('#exttag').textContent = uploadedLabel ? '· ' + esc(uploadedLabel) : '';
+  $('#extreset').style.display = uploadedLabel ? '' : 'none';
+  if(!impact.length){
+    $('#drivers').innerHTML = '';
+    $('#extsrc').textContent = uploadedLabel
+      ? `No rows in the upload matched the sales dates (${(ext||{}).n_days||0} days in window).`
+      : '';
+    return;
+  }
+  const maxMag = Math.max(...impact.map(factorMagnitude), 1);
+  $('#drivers').innerHTML = impact.map(f=>{
+    const mag = factorMagnitude(f);
+    const w = Math.max(2, mag/maxMag*100);
+    const up = f.direction==='raises';
+    const val = f.type==='flag'
+      ? `${f.effect_pct>=0?'+':''}${f.effect_pct}% · ${f.on_days} days`
+      : `r = ${f.correlation} (${f.strength})`;
+    return `<div class="row"><span class="nm">${esc(f.factor)}</span>`
+      + `<span class="barwrap"><span class="fill ${up?'up':'down'}" style="width:${w}%"></span></span>`
+      + `<span class="vv">${esc(val)}</span>`
+      + `<span class="tag">${f.type==='flag'?'lift':'corr'}</span></div>`;
+  }).join('');
+  if(uploadedLabel)
+    $('#extsrc').textContent = `${(ext||{}).matched_days||0} of ${(ext||{}).n_days||0} sales days matched.`;
+}
+$('#extreset').onclick=()=>{ renderExternal(null, null); $('#extStatus').textContent=''; };
+$('#extrun').onclick=async ()=>{
+  const f=$('#extfile').files[0];
+  if(!f){ $('#extStatus').textContent='Choose a CSV file first.'; return; }
+  $('#extStatus').textContent='Scoring…';
+  try{
+    const b64=await new Promise((res,rej)=>{ const rd=new FileReader();
+      rd.onload=()=>res(rd.result.split(',')[1]); rd.onerror=rej; rd.readAsDataURL(f); });
+    const resp=await fetch('/api/external_impact',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({file_b64:b64, filename:f.name})});
+    const out=await resp.json();
+    if(!resp.ok){ $('#extStatus').textContent=out.error||'Failed to score.'; return; }
+    renderExternal(out, f.name);
+    $('#extStatus').textContent = out.factors&&out.factors.length
+      ? `Scored ${out.factors.length} factor(s).`
+      : 'No usable factor columns found (need a date column + numeric/flag columns).';
+  }catch(e){ $('#extStatus').textContent='Error: '+e; }
+};
 
 // campaign cards: render + owner-discount workflow + launch
 let CUR=null;   // last rendered result (campaign/launch handlers need it)
