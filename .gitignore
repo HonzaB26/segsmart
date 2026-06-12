@@ -4,6 +4,8 @@ data/*.xlsx
 data/*.parquet
 data/*.zip
 !data/.gitkeep
+# a small, non-proprietary synthetic sample so clone→run works with zero setup
+!data/sample_eshop.csv
 # intermediate run artifacts (keep out/result.json as the baked demo)
 out/milan_result.json
 out/synth_result.json

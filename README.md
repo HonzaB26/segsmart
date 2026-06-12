@@ -108,9 +108,12 @@ realistic emails). Safe to publish — no real customers.
 
 ```bash
 pip install -r requirements.txt
-python3 -m gen.synth                    # generate the synthetic demo dataset
-python3 -c "import pipeline; pipeline.run(source='milan', path='data/synthetic_milan.csv', currency='Kč', use_llm=False)"
+# a small non-proprietary sample ships in the repo — run on it immediately:
+python3 -c "import pipeline; pipeline.run(source='milan', path='data/sample_eshop.csv', currency='Kč', use_llm=False)"
 python3 server.py                       # dashboard at http://localhost:8099
+
+# …or generate a full-size synthetic dataset (pure stdlib, no real data):
+python3 -m gen.synth                    # writes data/synthetic_milan.csv
 ```
 
 `use_llm=False` skips the model (instant, rule-based cards). Set it `True` with an
