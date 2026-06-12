@@ -26,3 +26,5 @@ venv/
 out/history/
 # launched mailings contain recipient lists (real customer data)
 out/mailings/
+# presentation working notes (not for publication)
+docs/presentation-notes.md
