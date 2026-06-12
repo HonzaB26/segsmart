@@ -1,0 +1,19 @@
+# --- DATA: never publish real customer data, keep large files out of git ---
+data/*.csv
+data/*.xlsx
+data/*.parquet
+data/*.zip
+!data/.gitkeep
+# intermediate run artifacts (keep out/result.json as the baked demo)
+out/milan_result.json
+out/synth_result.json
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# misc
+*.bak
+.DS_Store

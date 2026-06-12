@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SegSmart — local customer segmentation</title>
+<style>
+  :root{
+    --bg:#1e1b4b; --panel:#2a2660; --panel2:#322c75; --ink:#eef0ff;
+    --mut:#a9a7d4; --line:#403a86;
+    --teal:#2dd4bf; --purple:#a78bfa; --amber:#f59e0b; --lime:#84cc16; --red:#f87171;
+    --good:#34d399;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(160deg,#1a163f,#241f57);color:var(--ink);
+       font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  .logo{font-size:22px;font-weight:800;letter-spacing:.3px}
+  .logo span{color:var(--teal)}
+  .sub{color:var(--mut);font-size:13px}
+  .badge{margin-left:auto;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.4);
+         color:var(--good);padding:6px 12px;border-radius:999px;font-size:12.5px;font-weight:600}
+  .meta{color:var(--mut);font-size:12.5px;margin:2px 0 18px}
+  .grid{display:grid;gap:16px}
+  .kpis{grid-template-columns:repeat(4,1fr)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+  .kpi .lbl{color:var(--mut);font-size:11.5px;text-transform:uppercase;letter-spacing:.6px}
+  .kpi .val{font-size:30px;font-weight:800;margin-top:6px;line-height:1}
+  .kpi .note{color:var(--teal);font-size:12px;margin-top:8px}
+  .two{grid-template-columns:1.15fr 1fr}
+  .three{grid-template-columns:1fr 1fr}
+  h3{margin:0 0 14px;font-size:14px;font-weight:700;letter-spacing:.2px}
+  .donutrow{display:flex;align-items:center;gap:18px}
+  .legend{font-size:13px}
+  .legend div{display:flex;align-items:center;gap:8px;margin:7px 0}
+  .dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .legend .pc{margin-left:auto;color:var(--mut)}
+  .bars{display:flex;align-items:flex-end;gap:14px;height:170px;padding-top:8px}
+  .bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;justify-content:flex-end;height:100%}
+  .bar .col{width:100%;border-radius:7px 7px 0 0;min-height:3px}
+  .bar .cap{font-size:11px;color:var(--mut)}
+  .bar .amt{font-size:11px;font-weight:700}
+  .camps{display:flex;flex-direction:column;gap:10px}
+  .camp{background:var(--panel2);border-radius:12px;padding:12px 14px;border-left:4px solid var(--mut);position:relative}
+  .camp .top{display:flex;align-items:center;gap:8px}
+  .camp .seg{font-weight:700}
+  .camp .pri{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;padding:2px 8px;border-radius:999px;font-weight:700}
+  .pri.high{background:rgba(248,113,113,.18);color:#fca5a5}
+  .pri.medium{background:rgba(245,158,11,.18);color:#fcd34d}
+  .pri.low{background:rgba(148,163,184,.18);color:#cbd5e1}
+  .camp .head{font-size:14px;margin:6px 0 3px}
+  .camp .det{color:var(--mut);font-size:12.5px}
+  .camp .est{margin-top:7px;font-size:12.5px;color:var(--teal)}
+  .camp .src{position:absolute;right:12px;bottom:10px;font-size:10px;color:#7c79b8}
+  .season{display:flex;align-items:flex-end;gap:5px;height:120px}
+  .mcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;justify-content:flex-end;height:100%}
+  .mcol .mb{width:100%;border-radius:4px 4px 0 0;background:var(--purple);min-height:2px}
+  .mcol.peak .mb{background:var(--teal)}
+  .mcol .ml{font-size:10px;color:var(--mut)}
+  .valrow{display:flex;gap:26px;flex-wrap:wrap}
+  .val b{font-size:20px}
+  .val small{color:var(--mut);display:block;font-size:11.5px}
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px}
+  button{background:var(--teal);color:#06281f;border:0;padding:9px 16px;border-radius:9px;font-weight:700;cursor:pointer}
+  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  input[type=file]{color:var(--mut);font-size:12.5px}
+  label.cur{color:var(--mut);font-size:12.5px}
+  select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:5px}
+  .hint{color:var(--mut);font-size:12px;margin-top:8px}
+  .foot{color:#7c79b8;font-size:11.5px;text-align:center;margin:22px 0 6px}
+  #status{font-size:12.5px;color:var(--amber)}
+  .insight{background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.3);border-radius:12px;
+           padding:12px 16px;font-size:13.5px;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Seg<span>Smart</span></div>
+    <div class="sub">customer segmentation that never leaves your laptop</div>
+    <div class="badge">🔒 Data stays on this machine</div>
+  </header>
+  <div class="meta" id="meta">loading…</div>
+
+  <div class="grid kpis" id="kpis"></div>
+
+  <div class="insight" id="insight" style="display:none"></div>
+
+  <div class="grid two" style="margin-top:16px">
+    <div class="card">
+      <h3>Customer segments</h3>
+      <div class="donutrow">
+        <svg id="donut" width="200" height="200" viewBox="0 0 200 200"></svg>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Revenue by segment</h3>
+      <div class="bars" id="bars"></div>
+    </div>
+  </div>
+
+  <div class="grid two" style="margin-top:16px">
+    <div class="card">
+      <h3>AI campaign suggestions <span class="sub" id="llmtag"></span></h3>
+      <div class="camps" id="camps"></div>
+    </div>
+    <div class="card">
+      <h3>Seasonality <span class="sub" id="seasontag"></span></h3>
+      <div class="season" id="season"></div>
+      <div class="hint" id="seasonhint"></div>
+
+      <h3 style="margin-top:20px">Validation</h3>
+      <div class="valrow" id="validation"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>Run on your own data</h3>
+    <div class="controls">
+      <input type="file" id="file" accept=".csv">
+      <label class="cur">Currency
+        <select id="currency"><option>£</option><option>€</option><option>Kč</option><option>$</option></select>
+      </label>
+      <label class="cur"><input type="checkbox" id="llm" checked> AI copy (local model)</label>
+      <button id="run">Run locally ▸</button>
+      <button class="ghost" id="reload">Reload sample</button>
+      <span id="status"></span>
+    </div>
+    <div class="hint">CSV needs columns: customer_id, order_id, order_date, quantity, unit_price (product, country optional).
+      Nothing is uploaded — the pipeline runs here.</div>
+  </div>
+
+  <div class="foot">SegSmart · MBA Project 2026 · runs fully offline · RFM + KMeans + on-device LLM</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmtMoney = (n, c) => c === 'Kč'
+  ? new Intl.NumberFormat('cs-CZ',{maximumFractionDigits:0}).format(n) + ' Kč'
+  : c + new Intl.NumberFormat('en-GB',{maximumFractionDigits:0}).format(n);
+
+function render(r){
+  const c = r.meta.currency || '£';
+  $('#meta').textContent =
+    `${r.meta.rows.toLocaleString()} transactions · ${r.meta.customers.toLocaleString()} customers · `
+    + `${r.meta.orders.toLocaleString()} orders · ${r.meta.date_from} → ${r.meta.date_to} · `
+    + `${r.meta.countries} countries · computed in ${r.runtime_secs}s`;
+
+  // KPIs
+  const k = r.kpis;
+  $('#kpis').innerHTML = [
+    ['Total customers', k.total_customers.toLocaleString(), 'active in window'],
+    ['Repeat rate', k.repeat_rate_pct + '%', 'buy more than once'],
+    ['Avg order value', fmtMoney(k.avg_order_value,c), 'across all orders'],
+    ['AI campaigns', k.ai_campaigns, 'ready to launch'],
+  ].map(([l,v,n])=>`<div class="card kpi"><div class="lbl">${l}</div><div class="val">${v}</div><div class="note">${n}</div></div>`).join('');
+
+  // headline insight
+  const champ = r.segments.find(s=>s.name==='Champions');
+  const dorm = r.segments.find(s=>s.name==='Dormant');
+  if(champ){
+    $('#insight').style.display='block';
+    $('#insight').innerHTML = `<b>${champ.share_pct}%</b> of customers (Champions) drive `
+      + `<b>${champ.rev_share_pct}%</b> of revenue`
+      + (dorm?` · <b>${dorm.share_pct}%</b> are Dormant — silent for ~${Math.round(dorm.avg_recency)} days`:'');
+  }
+
+  // donut
+  const segs = r.segments, total = segs.reduce((a,s)=>a+s.customers,0);
+  const R=80, CX=100, CY=100, C=2*Math.PI*R;
+  let off=0, arcs='';
+  segs.forEach(s=>{
+    const frac=s.customers/total, len=frac*C;
+    arcs += `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${s.color}" stroke-width="30"
+      stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 ${CX} ${CY})"/>`;
+    off+=len;
+  });
+  $('#donut').innerHTML = arcs +
+    `<text x="${CX}" y="${CY-4}" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">${segs.length}</text>`+
+    `<text x="${CX}" y="${CY+16}" text-anchor="middle" font-size="11" fill="#a9a7d4">segments</text>`;
+  $('#legend').innerHTML = segs.map(s=>
+    `<div><span class="dot" style="background:${s.color}"></span>${s.name}<span class="pc">${s.share_pct}%</span></div>`).join('');
+
+  // revenue bars
+  const maxRev = Math.max(...segs.map(s=>s.revenue));
+  $('#bars').innerHTML = segs.map(s=>{
+    const h = Math.max(3, s.revenue/maxRev*140);
+    return `<div class="bar"><div class="amt" style="color:${s.color}">${fmtMoney(s.revenue,c)}</div>`
+      + `<div class="col" style="height:${h}px;background:${s.color}"></div>`
+      + `<div class="cap">${s.name}</div></div>`;
+  }).join('');
+
+  // campaigns
+  $('#camps').innerHTML = r.campaigns.map(cp=>{
+    const e=cp.estimate;
+    return `<div class="camp" style="border-left-color:${(r.segments.find(s=>s.name===cp.segment)||{}).color||'#888'}">
+      <div class="top"><span class="seg">${cp.segment}</span>
+        <span class="pri ${cp.priority}">${cp.priority}</span></div>
+      <div class="head">“${cp.headline}”</div>
+      <div class="det">${cp.channel} · ${cp.offer}</div>
+      <div class="det" style="margin-top:3px">${cp.rationale||''}</div>
+      <div class="est">≈ ${e.expected_responders} responders → ${fmtMoney(e.est_incremental_revenue,c)} `
+      + `(@${Math.round(e.assumed_response_rate*100)}% response)</div>
+      <span class="src">${cp._source}</span></div>`;
+  }).join('');
+  const llmName = (r.campaigns[0]||{})._source||'';
+  $('#llmtag').textContent = llmName.includes('fallback')?'· rule-based':'· '+llmName+' (on-device)';
+
+  // seasonality
+  const si = r.seasonality.index, maxI=Math.max(...si.map(m=>m.index));
+  const hook=r.seasonality.hook;
+  $('#season').innerHTML = si.map(m=>{
+    const peak = m.month===hook.peak_month;
+    return `<div class="mcol ${peak?'peak':''}"><div class="mb" style="height:${m.index/maxI*100}px"></div>`
+      + `<div class="ml">${m.month}</div></div>`;
+  }).join('');
+  $('#seasonhint').innerHTML = `Peak: <b>${hook.peak_month}</b> (+${hook.peak_uplift_pct}% vs average) · `
+    + `low: ${hook.low_month}. Plan inventory & the winter push around ${hook.peak_month}.`;
+  $('#seasontag').textContent = '· indexed to 100 = average month';
+
+  // validation
+  const v=r.validation;
+  $('#validation').innerHTML = [
+    [v.kmeans_silhouette, 'KMeans silhouette', 'cluster separation'],
+    [v.rfm_kmeans_ari, 'RFM ↔ KMeans (ARI)', 'rules vs geometry agreement'],
+    [v.n_customers.toLocaleString(), 'customers segmented', 'full base'],
+  ].map(([b,l,s])=>`<div class="val"><b>${b}</b><small>${l}</small><small>${s}</small></div>`).join('');
+}
+
+async function load(){
+  $('#status').textContent='';
+  try{ const r=await fetch('/api/result'); if(r.ok){ render(await r.json()); return; } }catch(e){}
+  $('#meta').textContent='No result yet — click "Run locally".';
+}
+
+$('#run').onclick = async ()=>{
+  const f=$('#file').files[0];
+  const body={use_llm:$('#llm').checked, currency:$('#currency').value};
+  $('#status').textContent='running locally…';
+  if(f){ body.csv_text = await f.text(); }
+  try{
+    const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(j.error){ $('#status').textContent='error: '+j.error; return; }
+    render(j); $('#status').textContent='done ✓';
+  }catch(e){ $('#status').textContent='error: '+e; }
+};
+$('#reload').onclick = load;
+load();
+</script>
+</body>
+</html>

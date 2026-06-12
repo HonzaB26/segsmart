@@ -1,0 +1,355 @@
+{
+  "meta": {
+    "rows": 123302,
+    "customers": 3997,
+    "orders": 27547,
+    "countries": 1,
+    "date_from": "2024-10-11",
+    "date_to": "2026-06-10",
+    "revenue": 69776488.81,
+    "avg_order_value": 2533.0,
+    "currency": "Kč"
+  },
+  "kpis": {
+    "total_customers": 3997,
+    "repeat_rate_pct": 86.0,
+    "avg_order_value": 2533.0,
+    "revenue": 69776488.81,
+    "ai_campaigns": 5
+  },
+  "segments": [
+    {
+      "name": "Champions",
+      "color": "#2dd4bf",
+      "customers": 835,
+      "share_pct": 20.9,
+      "revenue": 41177071.8,
+      "rev_share_pct": 59.0,
+      "avg_recency": 27.7,
+      "avg_frequency": 14.8,
+      "avg_monetary": 49313.9,
+      "avg_order_value": 3407.9
+    },
+    {
+      "name": "Loyal",
+      "color": "#a78bfa",
+      "customers": 1118,
+      "share_pct": 28.0,
+      "revenue": 22683608.5,
+      "rev_share_pct": 32.5,
+      "avg_recency": 159.5,
+      "avg_frequency": 8.5,
+      "avg_monetary": 20289.5,
+      "avg_order_value": 2205.3
+    },
+    {
+      "name": "At-risk",
+      "color": "#f59e0b",
+      "customers": 562,
+      "share_pct": 14.1,
+      "revenue": 3412174.1,
+      "rev_share_pct": 4.9,
+      "avg_recency": 280.2,
+      "avg_frequency": 4.6,
+      "avg_monetary": 6071.5,
+      "avg_order_value": 1232.5
+    },
+    {
+      "name": "New",
+      "color": "#84cc16",
+      "customers": 627,
+      "share_pct": 15.7,
+      "revenue": 1056297.2,
+      "rev_share_pct": 1.5,
+      "avg_recency": 26.0,
+      "avg_frequency": 2.0,
+      "avg_monetary": 1684.7,
+      "avg_order_value": 825.0
+    },
+    {
+      "name": "Dormant",
+      "color": "#f87171",
+      "customers": 855,
+      "share_pct": 21.4,
+      "revenue": 1447337.2,
+      "rev_share_pct": 2.1,
+      "avg_recency": 451.7,
+      "avg_frequency": 2.1,
+      "avg_monetary": 1692.8,
+      "avg_order_value": 747.6
+    }
+  ],
+  "seasonality": {
+    "index": [
+      {
+        "month_num": 1,
+        "month": "Jan",
+        "index": 83
+      },
+      {
+        "month_num": 2,
+        "month": "Feb",
+        "index": 77
+      },
+      {
+        "month_num": 3,
+        "month": "Mar",
+        "index": 96
+      },
+      {
+        "month_num": 4,
+        "month": "Apr",
+        "index": 101
+      },
+      {
+        "month_num": 5,
+        "month": "May",
+        "index": 98
+      },
+      {
+        "month_num": 6,
+        "month": "Jun",
+        "index": 92
+      },
+      {
+        "month_num": 7,
+        "month": "Jul",
+        "index": 80
+      },
+      {
+        "month_num": 8,
+        "month": "Aug",
+        "index": 84
+      },
+      {
+        "month_num": 9,
+        "month": "Sep",
+        "index": 96
+      },
+      {
+        "month_num": 10,
+        "month": "Oct",
+        "index": 110
+      },
+      {
+        "month_num": 11,
+        "month": "Nov",
+        "index": 138
+      },
+      {
+        "month_num": 12,
+        "month": "Dec",
+        "index": 146
+      }
+    ],
+    "curve": [
+      {
+        "month": "2024-10",
+        "revenue": 3051250.99,
+        "orders": 1247
+      },
+      {
+        "month": "2024-11",
+        "revenue": 5198480.18,
+        "orders": 2187
+      },
+      {
+        "month": "2024-12",
+        "revenue": 5654663.58,
+        "orders": 2415
+      },
+      {
+        "month": "2025-01",
+        "revenue": 3248499.48,
+        "orders": 1378
+      },
+      {
+        "month": "2025-02",
+        "revenue": 2638106.41,
+        "orders": 1159
+      },
+      {
+        "month": "2025-03",
+        "revenue": 3593962.21,
+        "orders": 1562
+      },
+      {
+        "month": "2025-04",
+        "revenue": 3842337.56,
+        "orders": 1613
+      },
+      {
+        "month": "2025-05",
+        "revenue": 3661041.84,
+        "orders": 1633
+      },
+      {
+        "month": "2025-06",
+        "revenue": 3228191.74,
+        "orders": 1315
+      },
+      {
+        "month": "2025-07",
+        "revenue": 2775506.58,
+        "orders": 1095
+      },
+      {
+        "month": "2025-08",
+        "revenue": 2915952.83,
+        "orders": 1194
+      },
+      {
+        "month": "2025-09",
+        "revenue": 3224013.71,
+        "orders": 1060
+      },
+      {
+        "month": "2025-10",
+        "revenue": 3354838.42,
+        "orders": 1130
+      },
+      {
+        "month": "2025-11",
+        "revenue": 4108987.15,
+        "orders": 1323
+      },
+      {
+        "month": "2025-12",
+        "revenue": 4528807.42,
+        "orders": 1491
+      },
+      {
+        "month": "2026-01",
+        "revenue": 2506943.2,
+        "orders": 785
+      },
+      {
+        "month": "2026-02",
+        "revenue": 2184882.15,
+        "orders": 708
+      },
+      {
+        "month": "2026-03",
+        "revenue": 3053277.64,
+        "orders": 1201
+      },
+      {
+        "month": "2026-04",
+        "revenue": 2985073.26,
+        "orders": 1351
+      },
+      {
+        "month": "2026-05",
+        "revenue": 3136469.88,
+        "orders": 1396
+      },
+      {
+        "month": "2026-06",
+        "revenue": 885202.58,
+        "orders": 304
+      }
+    ],
+    "hook": {
+      "peak_month": "Dec",
+      "peak_index": 146,
+      "peak_uplift_pct": 46,
+      "low_month": "Feb",
+      "low_index": 77
+    }
+  },
+  "campaigns": [
+    {
+      "objective": "Odměnit a rozšířit nákup; udržet vztah",
+      "channel": "E-mail",
+      "offer": "VIP přístup k novinkám + dárek",
+      "headline": "VIP přístup k novinkám + dárek",
+      "rationale": "Pravidlové výchozí nastavení.",
+      "priority": "high",
+      "_source": "fallback",
+      "estimate": {
+        "assumed_response_rate": 0.25,
+        "expected_responders": 209,
+        "est_incremental_revenue": 712251
+      },
+      "segment": "Champions",
+      "llm_priority": "medium"
+    },
+    {
+      "objective": "Obnovení nákupů u věrných zákazníků do měsíce",
+      "channel": "E-mail",
+      "offer": "Sleva 300 Kč na objednávky nad 2000 Kč",
+      "headline": "Vítejte zpět! Vaše věrnostní sleva čeká.",
+      "rationale": "E-mail je levný a cílený. Věrní zákazníci reagují na osobní slevu po delší pauze.",
+      "priority": "high",
+      "_source": "qwen3.6:35b",
+      "estimate": {
+        "assumed_response_rate": 0.15,
+        "expected_responders": 168,
+        "est_incremental_revenue": 370490
+      },
+      "segment": "Loyal",
+      "llm_priority": "high"
+    },
+    {
+      "objective": "Zvýšit opakování nákupů u nováčků",
+      "channel": "E-mail",
+      "offer": "Sleva 200 Kč na další objednávku",
+      "headline": "Děkujeme za důvěru, máte pro vás slevu",
+      "rationale": "E-mail je levný. Nováčci po měsíci potřebují impulz. Sleva 200 Kč přesahuje průměr a zvýší opakování nákupů.",
+      "priority": "medium",
+      "_source": "qwen3.6:35b",
+      "estimate": {
+        "assumed_response_rate": 0.2,
+        "expected_responders": 125,
+        "est_incremental_revenue": 103125
+      },
+      "segment": "New",
+      "llm_priority": "high"
+    },
+    {
+      "objective": "Získat zpět neaktivní zákazníky",
+      "channel": "E-mail",
+      "offer": "Doprava zdarma při nákupu od Kč 1 200",
+      "headline": "Chybíte nám, máte tu dopravu zdarma",
+      "rationale": "E-mail je levný a cílený. Bezplatná doprava sníží bariéru nákupu u zákazníků neaktivních devět měsíců.",
+      "priority": "medium",
+      "_source": "qwen3.6:35b",
+      "estimate": {
+        "assumed_response_rate": 0.08,
+        "expected_responders": 45,
+        "est_incremental_revenue": 55462
+      },
+      "segment": "At-risk",
+      "llm_priority": "high"
+    },
+    {
+      "objective": "Reaktivovat, nebo levně opustit",
+      "channel": "E-mail",
+      "offer": "Chybíte nám – kód na 20 % zpět",
+      "headline": "Chybíte nám – kód na 20 % zpět",
+      "rationale": "Pravidlové výchozí nastavení.",
+      "priority": "low",
+      "_source": "fallback",
+      "estimate": {
+        "assumed_response_rate": 0.04,
+        "expected_responders": 34,
+        "est_incremental_revenue": 25418
+      },
+      "segment": "Dormant",
+      "llm_priority": "medium"
+    }
+  ],
+  "validation": {
+    "kmeans_silhouette": 0.487,
+    "rfm_kmeans_ari": 0.489,
+    "n_customers": 3997,
+    "segment_sizes": {
+      "Champions": 835,
+      "Loyal": 1118,
+      "At-risk": 562,
+      "New": 627,
+      "Dormant": 855
+    }
+  },
+  "runtime_secs": 900.7
+}

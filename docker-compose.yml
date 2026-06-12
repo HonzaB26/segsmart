@@ -1,0 +1,33 @@
+# SegSmart — runs fully on the customer's own machine. Two services:
+#   segsmart : the app + dashboard (openSUSE image)
+#   ollama   : the local LLM, so customer data NEVER leaves this host.
+# Works with `docker compose up` (also podman-compose).
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    # To use a GPU, uncomment (needs nvidia-container-toolkit):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - capabilities: ["gpu"]
+
+  segsmart:
+    build: .
+    ports:
+      - "8099:8099"
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      # gemma4:e4b = fast default. For top-quality Czech copy use qwen3.6:35b.
+      - SEG_LLM_MODEL=gemma4:e4b
+      # set to 1 to auto-pull the model on first start (large download)
+      - SEG_AUTOPULL=0
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_models:
