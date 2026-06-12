@@ -75,10 +75,19 @@ def _finalize(df: pd.DataFrame, drop_cancellations=True, drop_nonpositive=True) 
         if col not in df:
             raise NoValidData(f"could not find a {col.replace('_', ' ')} column — "
                               "map it manually in the wizard")
+    rows_in = len(df)
+    dropped = {}                                    # reason -> rows lost
+
+    def _step(d, reason, prev_len):
+        if prev_len - len(d):
+            dropped[reason] = dropped.get(reason, 0) + (prev_len - len(d))
+        return d
+
     df["order_date"] = _parse_dates(df["order_date"])
     df["customer_id"] = df["customer_id"].astype(str).str.strip()
-    df = df.dropna(subset=["order_date"])
-    df = df[~df["customer_id"].str.lower().isin(("", "nan", "none"))]
+    df = _step(df.dropna(subset=["order_date"]), "unparseable date", len(df))
+    df = _step(df[~df["customer_id"].str.lower().isin(("", "nan", "none"))],
+               "missing customer id", len(df))
     synthesized_ids = "order_id" not in df
     if synthesized_ids:                             # transaction dump: synthesize
         df["order_id"] = (df["customer_id"] + "@"
@@ -97,17 +106,18 @@ def _finalize(df: pd.DataFrame, drop_cancellations=True, drop_nonpositive=True) 
         qty = df["quantity"].replace(0, np.nan)
         df["unit_price"] = df["line_value"] / qty
     df["unit_price"] = pd.to_numeric(df["unit_price"], errors="coerce")
-    df = df.dropna(subset=["unit_price"])
+    df = _step(df.dropna(subset=["unit_price"]), "unparseable price", len(df))
     if drop_cancellations:
         # a cancellation/return: negative quantity, or a UCI-style C-invoice
         # ('C' + digits ONLY — a plain startswith('C') would silently drop
         # every order in an export numbered 'CZ2025-001', and never applies
         # to ids we synthesized ourselves)
+        n = len(df)
         if not synthesized_ids:
             df = df[~df["order_id"].str.fullmatch(r"[Cc]\d+")]
-        df = df[df["quantity"] > 0]
+        df = _step(df[df["quantity"] > 0], "cancellations / returns", n)
     if drop_nonpositive:
-        df = df[df["unit_price"] > 0]
+        df = _step(df[df["unit_price"] > 0], "non-positive price", len(df))
     if has_total:                                   # the export's total is authoritative
         df["line_value"] = df["line_value"].fillna(df["quantity"] * df["unit_price"])
     else:
@@ -118,7 +128,12 @@ def _finalize(df: pd.DataFrame, drop_cancellations=True, drop_nonpositive=True) 
         df["country"] = ""
     df["product"] = df["product"].astype(str)
     df["country"] = df["country"].astype(str)
-    return df[CANON].reset_index(drop=True)
+    out = df[CANON].reset_index(drop=True)
+    # ingest report — the pipeline reads it right after loading and shows it
+    # on the dashboard, so silently-dropped rows are never silent
+    out.attrs["ingest"] = {"rows_in": int(rows_in), "rows_kept": int(len(out)),
+                           "dropped": {k: int(v) for k, v in dropped.items()}}
+    return out
 
 
 def load_uci(path: str = "data/online_retail.parquet") -> pd.DataFrame:
@@ -188,14 +203,14 @@ def _czk(s: pd.Series) -> pd.Series:
         errors="coerce")
 
 
-# Milan's BigQuery export. product_id encodes line TYPE; status is Czech.
+# The partner shop's BigQuery export. product_id encodes line TYPE; status is Czech.
 NON_PRODUCT_PREFIXES = ("BILLING", "SHIPPING")          # zero-value structural lines
 DISCOUNT_PREFIXES = ("COUPON",)                          # negative adjustment lines
 NONREVENUE_STATUS = {"Stornována", "Vrácená objednávka", "Platba selhala"}  # not realized
 
 
-def load_milan(path: str = "data/bq_export.csv") -> pd.DataFrame:
-    """Milan's real e-shop export (one row per order line).
+def load_eshop(path: str = "data/bq_export.csv") -> pd.DataFrame:
+    """The partner shop's real export (one row per order line).
 
     customer_key is the customer id (usually the email; hashed in this export).
     Keeps real SKU + GIFT + COUPON lines so order totals net out discounts;
@@ -217,17 +232,30 @@ def load_milan(path: str = "data/bq_export.csv") -> pd.DataFrame:
         "status": raw["order_status"].astype(str),
         "zip_prefix": raw.get("zip_prefix", pd.Series("", index=raw.index)).astype(str),
     })
+    rows_in, dropped = len(df), {}
+    n = len(df)
     df = df.dropna(subset=["customer_id", "order_date", "line_value"])
     df = df[df["customer_id"].str.lower().ne("nan") & df["customer_id"].ne("")]
+    if n - len(df):
+        dropped["missing customer / date / value"] = int(n - len(df))
     # drop structural billing/shipping rows and non-realized orders
+    n = len(df)
     df = df[~df["product"].str.upper().str.startswith(NON_PRODUCT_PREFIXES)]
+    if n - len(df):
+        dropped["billing / shipping lines"] = int(n - len(df))
+    n = len(df)
     df = df[~df["status"].isin(NONREVENUE_STATUS)]
+    if n - len(df):
+        dropped["cancelled / returned / failed"] = int(n - len(df))
     # flag real product lines (for diversity counts; excludes coupons/gifts)
     df["is_product"] = ~df["product"].str.upper().str.startswith(
         NON_PRODUCT_PREFIXES + DISCOUNT_PREFIXES)
     df["quantity"] = df["quantity"].fillna(0)
     df["unit_price"] = df["unit_price"].fillna(0)
-    return df.reset_index(drop=True)
+    out = df.reset_index(drop=True)
+    out.attrs["ingest"] = {"rows_in": int(rows_in), "rows_kept": int(len(out)),
+                           "dropped": dropped}
+    return out
 
 
 def summary(df: pd.DataFrame) -> dict:

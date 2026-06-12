@@ -106,6 +106,45 @@ untrusted (escaped in the UI, JSON extracted defensively), and **numbers are
 never the model's** — response-rate assumptions and priority ranking are
 deterministic and printed on the card.
 
+## The quality layer — honesty as a feature
+
+Two mechanisms keep the tool from quietly lying:
+
+- **Ingest report.** The loader counts every row it drops and why (unparseable
+  date/price, missing customer, cancellations, billing lines). The dashboard
+  shows "kept X of Y rows · dropped: …" — silently-dropped data is never silent.
+- **Warnings.** The pipeline emits `quality.warnings` when the data can't
+  support the conclusions: window shorter than ~6 months (frequency segments
+  degenerate — observed on a real 2-month export), median order value below 1
+  (the classic wrong-decimal-separator symptom), fewer than 50 customers,
+  a high share of unparseable rows (mapping is off), or rule/cluster agreement
+  near zero. The product tells the user *"don't trust this yet"* instead of
+  rendering confident nonsense — something SaaS competitors structurally avoid.
+
+## From insight to action
+
+`result.json` carries per-customer rows (`customers`: id, segment, recency,
+orders, spend), so the dashboard offers **segment drill-down** — click
+Champions, see exactly who they are — and **CSV export** for handoff to a
+mailing tool. The export is generated client-side from the already-local JSON;
+nothing new touches the network.
+
+Persisted runs also snapshot per-customer segments to `out/history/` (never
+git-tracked). The next run diffs against the latest snapshot and reports
+**segment migration** — "3 Champions → At-risk since the last run" is the
+churn alarm an SME can actually act on. Segmentation becomes a movie, not a
+photo.
+
+## PII policy (enforced, not promised)
+
+The public repo must contain no personal data — including team members' names.
+`tests/test_no_pii.py` makes the policy executable: a denylist of personal
+names stored as SHA-256 hashes (so the policy can't reintroduce what it bans),
+e-mail patterns allowed only in known-synthetic fixtures, birth-number-shaped
+strings banned, private artifacts (real exports, user config, uploads, history
+snapshots) asserted never-tracked, and the baked demo's customer rows must be
+anonymized `demo-NNNN` ids.
+
 ## Configuration & persistence
 
 `config/segsmart.json` — plain JSON, owned by the user, hand-editable,
@@ -113,9 +152,10 @@ deterministic and printed on the card.
 time so secrets live in the environment, not the file. The `/setup` page is
 just a friendly editor for this file plus test-and-preview for connectors.
 
-Persistence rule: a run from the saved config writes `out/result.json` (your
-configured source *is* your dashboard); an ad-hoc wizard upload renders once
-and leaves nothing on disk.
+Persistence rule: a run from the saved config writes `out/result.json` and a
+segment snapshot under `out/history/` (your configured source *is* your
+dashboard, and snapshots enable migration tracking); an ad-hoc wizard upload
+renders once and leaves nothing on disk.
 
 ## Server & security model
 
@@ -160,7 +200,7 @@ connected.
 
 ## Synthetic data (`gen/`)
 
-Milan's real export is gitignored; what ships is a generator matching his
+A teammate's real export is gitignored; what ships is a generator matching its
 exact BigQuery schema: a **templated** (deliberately not LLM-generated —
 local models produced broken Czech) drogerie catalog and archetype-driven
 customers (champion/loyal/B2B/new/at-risk/dormant) over a 20-month window with
@@ -169,8 +209,9 @@ of real data can't show segmentation; 20 synthetic months can.
 
 ## Testing philosophy
 
-~100 pytest cases, all offline, a few seconds total. Three layers: unit tests
+~115 pytest cases, all offline, a few seconds total. Three layers: unit tests
 per module, the messy-ingestion convergence battery, and regression tests
 pinning every bug found by code review or live use (tie-aware scoring, the
 C-invoice rule that once silently deleted whole exports, auth, read-only
-guards). CI runs the suite on every push.
+guards) — plus the executable PII policy. CI runs the suite on every push;
+a second workflow publishes the container image to GHCR on version tags.

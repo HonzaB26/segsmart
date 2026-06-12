@@ -241,7 +241,10 @@ $('#u_run').onclick = async ()=>{
         decimal:$('#u_decimal').value, language:$('#u_lang').value});
     }
     if(j.error){ st.textContent='error: '+j.error; return; }
-    st.innerHTML=`done ✓ (${j.kpis.total_customers} customers) — <a href="/" style="color:var(--teal)">view dashboard</a>`
+    const w=((j.quality||{}).warnings||[]).length;
+    st.innerHTML=`done ✓ (${j.kpis.total_customers} customers`
+      + (w?`, ⚠ ${w} data warning${w>1?'s':''}`:'')
+      + `) — <a href="/" style="color:var(--teal)">view dashboard</a>`
       + (remember?'':' · not saved');
   }catch(e){ st.textContent='error: '+e; }
 };
@@ -290,7 +293,10 @@ $('#c_save').onclick = async ()=>{
     const j=await post('/api/run_config',{config, save:true});
     if(j.error){ st.textContent='error: '+j.error; return; }
     loadConfig();
-    st.innerHTML=`done ✓ (${j.kpis.total_customers} customers) — <a href="/" style="color:var(--teal)">view dashboard</a>`;
+    const w=((j.quality||{}).warnings||[]).length;
+    st.innerHTML=`done ✓ (${j.kpis.total_customers} customers`
+      + (w?`, ⚠ ${w} data warning${w>1?'s':''}`:'')
+      + `) — <a href="/" style="color:var(--teal)">view dashboard</a>`;
   }catch(e){ st.textContent='error: '+e; }
 };
 

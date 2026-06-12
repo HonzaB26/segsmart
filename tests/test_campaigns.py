@@ -3,9 +3,9 @@ from seg.segment import segment_profiles
 from seg.seasonality import peak_hook
 
 
-def test_fallback_cards_no_llm(feat, milan_df):
+def test_fallback_cards_no_llm(feat, eshop_df):
     prof = segment_profiles(feat)
-    hook = peak_hook(milan_df)
+    hook = peak_hook(eshop_df)
     cards = all_cards(prof, hook, use_llm=False, currency="Kč", lang="cs")
     assert len(cards) == len(prof)
     for c in cards:
@@ -14,9 +14,9 @@ def test_fallback_cards_no_llm(feat, milan_df):
             assert k in c
 
 
-def test_priority_is_deterministic_by_revenue(feat, milan_df):
+def test_priority_is_deterministic_by_revenue(feat, eshop_df):
     prof = segment_profiles(feat)
-    cards = all_cards(prof, peak_hook(milan_df), use_llm=False)
+    cards = all_cards(prof, peak_hook(eshop_df), use_llm=False)
     revs = [c["estimate"]["est_incremental_revenue"] for c in cards]
     assert revs == sorted(revs, reverse=True)          # sorted high->low
     assert cards[0]["priority"] == "high"

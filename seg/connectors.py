@@ -53,7 +53,7 @@ def sql_connector(connection_url: str, query: str, mapping: dict | None = None) 
     return load_dataframe(raw, mapping)
 
 
-# --- Google BigQuery (Milan's data lives here) -----------------------------
+# --- Google BigQuery (the partner shop's data lives here) -----------------------------
 def bigquery_connector(query: str, mapping: dict | None = None,
                        project: str | None = None, credentials_path: str | None = None) -> pd.DataFrame:
     """Run a BigQuery SQL query and map the result.
@@ -71,8 +71,8 @@ def bigquery_connector(query: str, mapping: dict | None = None,
     return load_dataframe(raw, mapping)
 
 
-# Milan's actual table → canonical (matches load_milan, but live from BQ).
-MILAN_BQ_MAPPING = {
+# The partner shop's actual table → canonical (matches load_eshop, live from BQ).
+ESHOP_BQ_MAPPING = {
     "customer_id": "customer_key", "order_id": "order_id", "order_date": "order_datetime",
     "quantity": "product_quantity", "unit_price": "unit_price", "product": "product_id",
     "country": "country",

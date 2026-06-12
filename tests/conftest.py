@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 @pytest.fixture(scope="session")
 def synth_csv(tmp_path_factory):
-    """A small synthetic dataset in Milan's schema, written once per session."""
+    """A small synthetic dataset in the partner shop's schema, written once per session."""
     from gen.synth import generate
     out = tmp_path_factory.mktemp("data") / "synth.csv"
     generate(n_customers=200, seed=1, out=str(out))
@@ -19,16 +19,16 @@ def synth_csv(tmp_path_factory):
 
 
 @pytest.fixture(scope="session")
-def milan_df(synth_csv):
-    from seg.loader import load_milan
-    return load_milan(synth_csv)
+def eshop_df(synth_csv):
+    from seg.loader import load_eshop
+    return load_eshop(synth_csv)
 
 
 @pytest.fixture(scope="session")
-def feat(milan_df):
+def feat(eshop_df):
     from seg.features import build_features
     from seg.segment import rfm_segments
-    return rfm_segments(build_features(milan_df))
+    return rfm_segments(build_features(eshop_df))
 
 
 @pytest.fixture

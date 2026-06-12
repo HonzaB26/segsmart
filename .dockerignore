@@ -3,10 +3,11 @@ data/online_retail.xlsx
 data/online_retail.parquet
 data/bq_export.csv
 data/fridgeit.zip
-out/milan_result.json
+out/eshop_result.json
 out/synth_result.json
 **/__pycache__
 *.pyc
 *.bak
 .git
 README.md
+out/history/

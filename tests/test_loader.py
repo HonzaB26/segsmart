@@ -1,10 +1,10 @@
-from seg.loader import (CANON, load_dataframe, load_milan, _to_num, summary)
+from seg.loader import (CANON, load_dataframe, load_eshop, _to_num, summary)
 import pandas as pd
 
 
-def test_canonical_columns(milan_df):
+def test_canonical_columns(eshop_df):
     for c in CANON:
-        assert c in milan_df.columns
+        assert c in eshop_df.columns
 
 
 def test_to_num_european():
@@ -31,9 +31,9 @@ def test_load_dataframe_mapping_and_decimal(generic_df):
     assert abs(row0["line_value"] - 2 * 10.50) < 1e-6
 
 
-def test_milan_drops_structural_and_cancelled(synth_csv):
+def test_eshop_drops_structural_and_cancelled(synth_csv):
     raw = pd.read_csv(synth_csv, dtype=str, keep_default_na=False)
-    df = load_milan(synth_csv)
+    df = load_eshop(synth_csv)
     # no BILLING/SHIPPING lines survive
     assert not df["product"].str.upper().str.startswith(("BILLING", "SHIPPING")).any()
     # cancelled/returned orders removed
@@ -43,12 +43,12 @@ def test_milan_drops_structural_and_cancelled(synth_csv):
     assert len(df) < len(raw)
 
 
-def test_milan_customer_key_is_email(milan_df):
-    assert milan_df["customer_id"].str.contains("@").mean() > 0.9
+def test_eshop_customer_key_is_email(eshop_df):
+    assert eshop_df["customer_id"].str.contains("@").mean() > 0.9
 
 
-def test_summary_shape(milan_df):
-    s = summary(milan_df)
+def test_summary_shape(eshop_df):
+    s = summary(eshop_df)
     assert s["customers"] > 0 and s["orders"] > 0
     assert s["revenue"] > 0 and s["avg_order_value"] > 0
     assert s["date_from"] <= s["date_to"]

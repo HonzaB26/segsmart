@@ -1,5 +1,9 @@
 # SegSmart
 
+[![CI](https://github.com/anicka-net/segsmart/actions/workflows/ci.yml/badge.svg)](https://github.com/anicka-net/segsmart/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2dd4bf.svg)](LICENSE)
+[![Status: alpha](https://img.shields.io/badge/status-alpha-f59e0b.svg)](#)
+
 **Enterprise-grade customer segmentation for small & medium businesses — that never leaves your own machine.**
 
 SegSmart reads your e-shop's order history, automatically groups customers into
@@ -42,6 +46,9 @@ The local model isn't a compromise. It's the moat.
 | **AI campaign drafts** | A **local LLM** writes objective / channel / offer / headline per segment |
 | **Impact estimates** | Computed deterministically (transparent response-rate assumptions), never hallucinated |
 | **Human gate** | Campaigns are drafts the owner approves — nothing sends automatically |
+| **Data honesty** | Ingest report (rows kept/dropped & why) + warnings when the data can't support conclusions (short window, suspicious money values, weak cluster agreement) |
+| **Action lists** | Click a segment → the actual customers, exportable as CSV for your mailing tool |
+| **Trend tracking** | Each run snapshots per-customer segments; the next run shows who moved (Champions → At-risk is your churn alarm) |
 
 ---
 
@@ -73,7 +80,7 @@ mapping, not new analytics code. That's the seam the whole system pivots on.
 ### Modules (`seg/`)
 
 - **`loader.py`** — canonical schema + cleaning (drops cancellations/returns, null
-  customers, non-positive prices). Adapters: `load_uci`, `load_milan` (real e-shop
+  customers, non-positive prices). Adapters: `load_uci`, `load_eshop` (real e-shop
   export: Czech decimal comma, line-type rows, status filtering), `load_csv`,
   and `load_dataframe` (the seam every connector funnels through). Tolerates
   missing columns: no order id → one order per customer per day, no quantity → 1,
@@ -124,11 +131,11 @@ realistic emails). Safe to publish — no real customers.
 ```bash
 pip install -r requirements.txt
 # a small non-proprietary sample ships in the repo — run on it immediately:
-python3 -c "import pipeline; pipeline.run(source='milan', path='data/sample_eshop.csv', currency='Kč', use_llm=False)"
+python3 -c "import pipeline; pipeline.run(source='eshop', path='data/sample_eshop.csv', currency='Kč', use_llm=False)"
 python3 server.py                       # dashboard at http://localhost:8099
 
 # …or generate a full-size synthetic dataset (pure stdlib, no real data):
-python3 -m gen.synth                    # writes data/synthetic_milan.csv
+python3 -m gen.synth                    # writes data/synthetic_eshop.csv
 ```
 
 `use_llm=False` skips the model (instant, rule-based cards). Set it `True` with an
@@ -141,6 +148,9 @@ Two services — the app and a local Ollama, so data stays on the host:
 ```bash
 docker compose up --build               # dashboard at http://localhost:8099
 ```
+
+Prebuilt images are published to GHCR on every version tag:
+`docker pull ghcr.io/anicka-net/segsmart:latest`.
 
 The dashboard works immediately from the baked demo. To generate AI campaign copy
 live, pull a model into the Ollama sidecar:
@@ -223,10 +233,16 @@ install only what your deployment uses.
 - [x] RFM + KMeans segmentation, seasonality, local-LLM campaign drafts
 - [x] Dashboard, synthetic generator, Docker + Ollama on openSUSE
 - [x] SQL connector (MySQL/Postgres/SQLite)
+- [x] Ingest report + data-honesty warnings
+- [x] Segment drill-down with CSV export (mailing-list handoff)
+- [x] Segment-migration history between runs
+- [x] GHCR image published on version tags
+- [ ] Scheduled refresh (cron/systemd timer calling `pipeline.py --config`)
 - [ ] BigQuery & Shoptet connectors hardened against live tenants
-- [ ] Scheduled refresh + segment-migration history (SQLite)
 - [ ] Campaign export to ESP (Ecomail / SmartEmailing / Mailchimp)
 - [ ] Churn / propensity model per segment
+- [ ] Background job queue so slow quality-model runs don't block HTTP
+- [ ] Margin-aware segmentation (profit, not just revenue, where cost data exists)
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to pick something up.
 

@@ -37,10 +37,21 @@ change must preserve that.
    write keywords). Don't weaken it; it's defence-in-depth next to read-only
    DB credentials.
 7. **Persistence contract**: runs from the saved config persist
-   `out/result.json` (the user's own data source feeds their dashboard);
-   ad-hoc wizard uploads (`/api/run`) must NOT persist anything.
+   `out/result.json` plus a per-customer segment snapshot in `out/history/`
+   (feeds the dashboard and migration tracking); ad-hoc wizard uploads
+   (`/api/run`) must NOT persist anything. `out/history/` is never tracked.
 8. **The server stays stdlib-only** (`http.server`). No Flask/FastAPI — the
    buy-once product has no dependency churn.
+9. **Docs ship in the same commit as the change.** If a change alters behavior,
+   API, schema, config, routes, or workflow, update every doc that describes it
+   (README.md, docs/ARCHITECTURE.md, this file, CONTRIBUTING.md) before
+   committing. A doc that contradicts the code is worse than no doc — readers
+   can't tell which one is lying. Quick audit: `git grep` the names of whatever
+   you changed (routes, env vars, functions, file paths) across `*.md`.
+10. **No personal data in the repo — including team members' names.**
+    `tests/test_no_pii.py` enforces this (hashed name denylist, e-mail and
+    birth-number patterns, never-tracked private paths). If it fires, scrub the
+    content; to denylist a new name, add its SHA-256 — never the name itself.
 
 ## Commands
 
@@ -48,7 +59,7 @@ change must preserve that.
 python3 -m pytest                 # the whole suite, offline, seconds
 python3 server.py                 # dashboard http://localhost:8099 (+ /setup)
 python3 pipeline.py --config      # headless run from config/segsmart.json
-python3 -m gen.synth              # regenerate synthetic data (Milan-schema)
+python3 -m gen.synth              # regenerate synthetic data (partner-shop schema)
 docker compose up --build         # the shippable thing (app + Ollama sidecar)
 ```
 

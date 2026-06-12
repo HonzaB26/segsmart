@@ -1,14 +1,14 @@
-"""Synthetic Czech e-shop generator — Milan's EXACT export schema.
+"""Synthetic Czech e-shop generator — the partner shop's EXACT export schema.
 
-Why: Milan's real export is only ~2 months, so repeat-purchase behaviour is
+Why: the real export we got is only ~2 months, so repeat-purchase behaviour is
 invisible and segmentation has nothing to bite on. This generates a longer
 (~20-month) history with archetype-driven customers so RFM/KMeans actually
 separate — and it's safe to put on a slide (no real customers).
 
 Output columns match bq_export.csv exactly, incl. Czech decimal comma, Czech
 order statuses, line-type rows (SKU / BILLING / SHIPPING / COUPON / GIFT),
-customer_key as a realistic Czech email (Milan: "spíš email než hash").
-Drop it straight into seg.loader.load_milan.
+customer_key as a realistic Czech email (per the shop owner: "spíš email než hash").
+Drop it straight into seg.loader.load_eshop.
 """
 from __future__ import annotations
 import csv, hashlib, random
@@ -109,7 +109,7 @@ def _seasonal_date(rng, lo: datetime, hi: datetime) -> datetime:
 
 
 def generate(n_customers=4000, end_date="2026-06-11", window_months=20,
-             seed=42, out="data/synthetic_milan.csv"):
+             seed=42, out="data/synthetic_eshop.csv"):
     rng = random.Random(seed)
     catalog = build_catalog(seed=seed)
     end = datetime.strptime(end_date, "%Y-%m-%d")
