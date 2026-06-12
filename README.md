@@ -192,6 +192,7 @@ install only what your deployment uses.
 |---|---|---|
 | `SEG_PORT` | `8099` | dashboard port |
 | `SEG_HOST` | `127.0.0.1` | bind address (`0.0.0.0` in Docker) |
+| `SEG_AUTH` | *(empty = off)* | `user:password` → HTTP Basic Auth on the whole app. Set it whenever the port is reachable beyond localhost; for more than a trusted LAN, terminate TLS in a reverse proxy |
 | `SEG_CONFIG` | `config/segsmart.json` | data-source config file |
 | `OLLAMA_URL` | `http://localhost:11434` | local LLM endpoint (`http://ollama:11434` in compose) |
 | `SEG_LLM_MODEL` | `gemma4:e4b` | campaign model (`qwen3.6:35b` for quality Czech) |

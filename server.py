@@ -13,7 +13,7 @@ POST /api/run_config     -> run from the saved config (persisted -> dashboard)
 Run:  python3 server.py     then open http://localhost:8099
 Everything — data, config, models, AI campaign copy — stays on this machine.
 """
-import base64, json, os, re, tempfile
+import base64, hmac, json, os, re, tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pipeline
@@ -26,6 +26,12 @@ PORT = int(os.environ.get("SEG_PORT", "8099"))
 # bind localhost by default (data-handling tool); set SEG_HOST=0.0.0.0 in Docker
 HOST = os.environ.get("SEG_HOST", "127.0.0.1")
 MAX_UPLOAD = int(os.environ.get("SEG_MAX_UPLOAD_MB", "64")) * 1024 * 1024
+# SEG_AUTH="user:password" puts the WHOLE app behind HTTP Basic Auth — the
+# results are customer revenue data, not just the config. Off by default
+# (localhost bind); set it whenever the port is reachable beyond this machine.
+# Basic auth is plaintext over plain HTTP: fine on a trusted LAN, put a
+# TLS-terminating reverse proxy in front for anything more.
+AUTH = os.environ.get("SEG_AUTH", "")
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -41,7 +47,30 @@ class H(BaseHTTPRequestHandler):
     def log_message(self, *a):  # quiet
         pass
 
+    def _authorized(self) -> bool:
+        if not AUTH:
+            return True
+        got = self.headers.get("Authorization", "")
+        if got.startswith("Basic "):
+            try:
+                supplied = base64.b64decode(got[6:]).decode()
+            except Exception:
+                return False
+            return hmac.compare_digest(supplied.encode(), AUTH.encode())
+        return False
+
+    def _deny(self):
+        body = json.dumps({"error": "authentication required"}).encode()
+        self.send_response(401)
+        self.send_header("WWW-Authenticate", 'Basic realm="SegSmart"')
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
+        if not self._authorized():
+            return self._deny()
         if self.path in ("/", "/index.html"):
             with open(os.path.join(HERE, "index.html"), "rb") as f:
                 return self._send(200, f.read(), "text/html; charset=utf-8")
@@ -64,6 +93,8 @@ class H(BaseHTTPRequestHandler):
         return self._send(404, json.dumps({"error": "not found"}))
 
     def do_POST(self):
+        if not self._authorized():
+            return self._deny()
         n = int(self.headers.get("Content-Length", 0))
         if n > MAX_UPLOAD:
             return self._send(413, json.dumps(

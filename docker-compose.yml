@@ -29,6 +29,9 @@ services:
       - SEG_LLM_MODEL=gemma4:e4b
       # set to 1 to auto-pull the model on first start (large download)
       - SEG_AUTOPULL=0
+      # the container binds 0.0.0.0 — protect the dashboard + setup on a
+      # shared network (results are customer revenue data):
+      # - SEG_AUTH=owner:changeme
     depends_on:
       - ollama
     restart: unless-stopped
