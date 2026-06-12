@@ -20,7 +20,7 @@ COLORS = {"Champions": "#2dd4bf", "Loyal": "#a78bfa", "At-risk": "#f59e0b",
 
 
 def run(source="uci", path=None, currency="£", use_llm=True, out="out/result.json",
-        mapping=None, lang=None):
+        mapping=None, lang=None, decimal="."):
     t0 = time.time()
     if lang is None:
         lang = "cs" if source == "milan" or currency == "Kč" else "en"
@@ -29,7 +29,7 @@ def run(source="uci", path=None, currency="£", use_llm=True, out="out/result.js
     elif source == "milan":
         df = load_milan(path or "data/bq_export.csv")
     else:
-        df = load_csv(path, mapping)
+        df = load_csv(path, mapping, decimal=decimal)
 
     meta = summary(df)
     meta["currency"] = currency

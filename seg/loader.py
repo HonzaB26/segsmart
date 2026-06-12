@@ -65,19 +65,38 @@ DEFAULT_MAP = {
 }
 
 
-def load_dataframe(raw: pd.DataFrame, mapping: dict | None = None) -> pd.DataFrame:
+def _to_num(s: pd.Series, decimal: str = ".") -> pd.Series:
+    """Parse a possibly-stringy numeric column. decimal=',' handles European
+    formats ('1 234,56' / '1.234,56' → 1234.56)."""
+    if pd.api.types.is_numeric_dtype(s):
+        return s
+    x = s.astype(str).str.replace(r"[\s ]", "", regex=True)
+    if decimal == ",":
+        x = x.str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+    return pd.to_numeric(x, errors="coerce")
+
+
+def load_dataframe(raw: pd.DataFrame, mapping: dict | None = None,
+                   decimal: str = ".") -> pd.DataFrame:
     """Map an arbitrary source frame into the canonical schema. The single seam
-    every connector (CSV, SQL, BigQuery, Shoptet, …) funnels through."""
+    every connector (CSV, SQL, BigQuery, Shoptet, …) funnels through.
+    decimal=',' for European-formatted numbers."""
     m = {**DEFAULT_MAP, **(mapping or {})}
     df = pd.DataFrame()
     for canon, col in m.items():
         if col in raw.columns:
             df[canon] = raw[col]
+    for c in ("quantity", "unit_price", "line_value"):
+        if c in df.columns:
+            df[c] = _to_num(df[c], decimal)
     return _finalize(df)
 
 
-def load_csv(path: str, mapping: dict | None = None, **read_kwargs) -> pd.DataFrame:
-    return load_dataframe(pd.read_csv(path, **read_kwargs), mapping)
+def load_csv(path: str, mapping: dict | None = None, decimal: str = ".",
+             **read_kwargs) -> pd.DataFrame:
+    read_kwargs.setdefault("dtype", str)          # let _to_num control parsing
+    read_kwargs.setdefault("keep_default_na", False)
+    return load_dataframe(pd.read_csv(path, **read_kwargs), mapping, decimal)
 
 
 def _czk(s: pd.Series) -> pd.Series:

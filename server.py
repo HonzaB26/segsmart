@@ -7,10 +7,11 @@ POST /api/run       -> run the pipeline live; optional CSV upload + column map
 Run:  python3 server.py     then open http://localhost:8099
 Everything — data, models, AI campaign copy — stays on this machine.
 """
-import json, os, tempfile
+import csv, io, json, os, tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pipeline
+from seg.mapping import infer_mapping
 
 PORT = int(os.environ.get("SEG_PORT", "8099"))
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -41,10 +42,25 @@ class H(BaseHTTPRequestHandler):
         return self._send(404, json.dumps({"error": "not found"}))
 
     def do_POST(self):
-        if self.path != "/api/run":
-            return self._send(404, json.dumps({"error": "not found"}))
         n = int(self.headers.get("Content-Length", 0))
         req = json.loads(self.rfile.read(n) or "{}")
+
+        # --- onboarding: propose a column mapping for an uploaded CSV ---
+        if self.path == "/api/infer_mapping":
+            try:
+                rows = list(csv.reader(io.StringIO(req.get("csv_text", ""))))
+                if not rows:
+                    return self._send(400, json.dumps({"error": "empty CSV"}))
+                header, samples = rows[0], rows[1:6]
+                out = infer_mapping(header, samples, use_llm=req.get("use_llm", True))
+                out["header"] = header
+                out["preview"] = samples
+                return self._send(200, json.dumps(out, ensure_ascii=False))
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}))
+
+        if self.path != "/api/run":
+            return self._send(404, json.dumps({"error": "not found"}))
         use_llm = req.get("use_llm", True)
         currency = req.get("currency", "£")
         try:
@@ -52,7 +68,8 @@ class H(BaseHTTPRequestHandler):
                 with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False) as tf:
                     tf.write(req["csv_text"]); path = tf.name
                 res = pipeline.run(source="csv", path=path, currency=currency,
-                                   use_llm=use_llm, mapping=req.get("mapping"))
+                                   use_llm=use_llm, mapping=req.get("mapping"),
+                                   decimal=req.get("decimal", "."), lang=req.get("language"))
             else:
                 res = pipeline.run(source="uci", currency=currency, use_llm=use_llm)
             return self._send(200, json.dumps(res, ensure_ascii=False))

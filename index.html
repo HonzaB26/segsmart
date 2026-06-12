@@ -120,16 +120,30 @@
     <h3>Run on your own data</h3>
     <div class="controls">
       <input type="file" id="file" accept=".csv">
-      <label class="cur">Currency
-        <select id="currency"><option>£</option><option>€</option><option>Kč</option><option>$</option></select>
-      </label>
-      <label class="cur"><input type="checkbox" id="llm" checked> AI copy (local model)</label>
-      <button id="run">Run locally ▸</button>
+      <button id="analyze">Analyze my file ▸</button>
       <button class="ghost" id="reload">Reload sample</button>
       <span id="status"></span>
     </div>
-    <div class="hint">CSV needs columns: customer_id, order_id, order_date, quantity, unit_price (product, country optional).
-      Nothing is uploaded — the pipeline runs here.</div>
+    <div class="hint">Drop ANY e-shop CSV — column names in any language. A local model figures out
+      how it maps to our format; you confirm. Nothing leaves this machine.</div>
+
+    <!-- step 2: confirm the auto-detected mapping -->
+    <div id="mapper" style="display:none;margin-top:16px">
+      <div id="detected" class="hint" style="margin-bottom:10px"></div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="color:var(--mut);text-align:left">
+          <th style="padding:4px 8px">Our field</th><th style="padding:4px 8px">Your column</th></tr></thead>
+        <tbody id="maprows"></tbody>
+      </table>
+      <div class="controls" style="margin-top:12px">
+        <label class="cur">Currency <input id="m_currency" style="width:54px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px"></label>
+        <label class="cur">Decimal <select id="m_decimal"><option value=".">.</option><option value=",">,</option></select></label>
+        <label class="cur">Language <select id="m_lang"><option value="en">en</option><option value="cs">cs</option><option value="de">de</option></select></label>
+        <label class="cur"><input type="checkbox" id="llm" checked> AI campaign copy</label>
+        <button id="run">Run with this mapping ▸</button>
+        <span id="run_status"></span>
+      </div>
+    </div>
   </div>
 
   <div class="foot">SegSmart · MBA Project 2026 · runs fully offline · RFM + KMeans + on-device LLM</div>
@@ -235,17 +249,66 @@ async function load(){
   $('#meta').textContent='No result yet — click "Run locally".';
 }
 
-$('#run').onclick = async ()=>{
+const CANON_FIELDS = [
+  ['customer_id','Customer (id / e-mail)',true],
+  ['order_id','Order / invoice id',true],
+  ['order_date','Order date',true],
+  ['quantity','Quantity',true],
+  ['unit_price','Unit price',true],
+  ['product','Product (optional)',false],
+  ['country','Country (optional)',false],
+];
+let uploadedCsv = '';
+
+// step 1 — analyze: let the local model propose a mapping
+$('#analyze').onclick = async ()=>{
   const f=$('#file').files[0];
-  const body={use_llm:$('#llm').checked, currency:$('#currency').value};
-  $('#status').textContent='running locally…';
-  if(f){ body.csv_text = await f.text(); }
+  if(!f){ $('#status').textContent='pick a CSV first'; return; }
+  uploadedCsv = await f.text();
+  $('#status').textContent='analyzing locally…';
+  try{
+    const r=await fetch('/api/infer_mapping',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({csv_text:uploadedCsv, use_llm:true})});
+    const d=await r.json();
+    if(d.error){ $('#status').textContent='error: '+d.error; return; }
+    buildMapper(d);
+    $('#status').textContent='detected by '+(d.source||'heuristic')+' — please confirm ↓';
+  }catch(e){ $('#status').textContent='error: '+e; }
+};
+
+function buildMapper(d){
+  const header=d.header||[];
+  const opt=sel=>['<option value="">— none —</option>']
+    .concat(header.map(h=>`<option ${h===sel?'selected':''}>${h}</option>`)).join('');
+  $('#maprows').innerHTML = CANON_FIELDS.map(([k,label,req])=>
+    `<tr><td style="padding:4px 8px">${label}${req?' <span style="color:var(--red)">*</span>':''}</td>`+
+    `<td style="padding:4px 8px"><select data-k="${k}" style="background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px;min-width:180px">`+
+    `${opt((d.mapping||{})[k])}</select></td></tr>`).join('');
+  $('#m_currency').value = d.currency||'';
+  $('#m_decimal').value = d.decimal||'.';
+  $('#m_lang').value = d.language||'en';
+  const miss=(d.missing_required||[]);
+  $('#detected').innerHTML = miss.length
+    ? `⚠️ couldn't auto-detect: <b>${miss.join(', ')}</b> — set them below`
+    : `✓ all required fields detected — review and run`;
+  $('#mapper').style.display='block';
+}
+
+// step 2 — run with the confirmed mapping
+$('#run').onclick = async ()=>{
+  const mapping={};
+  document.querySelectorAll('#maprows select').forEach(s=>{ if(s.value) mapping[s.dataset.k]=s.value; });
+  for(const [k,,req] of CANON_FIELDS) if(req && !mapping[k]){ $('#run_status').textContent='set '+k+' first'; return; }
+  const body={csv_text:uploadedCsv, mapping, use_llm:$('#llm').checked,
+    currency:$('#m_currency').value||'€', decimal:$('#m_decimal').value, language:$('#m_lang').value};
+  $('#run_status').textContent='running locally…';
   try{
     const r=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json();
-    if(j.error){ $('#status').textContent='error: '+j.error; return; }
-    render(j); $('#status').textContent='done ✓';
-  }catch(e){ $('#status').textContent='error: '+e; }
+    if(j.error){ $('#run_status').textContent='error: '+j.error; return; }
+    render(j); $('#run_status').textContent='done ✓ — dashboard updated above';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }catch(e){ $('#run_status').textContent='error: '+e; }
 };
 $('#reload').onclick = load;
 load();
