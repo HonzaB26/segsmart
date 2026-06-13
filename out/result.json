@@ -8,8 +8,9 @@
     "date_to": "2025-04-19",
     "revenue": 5072749.25,
     "avg_order_value": 534.09,
-    "currency": "CZK",
-    "source": "file"
+    "currency": "Kč",
+    "source": "file",
+    "language": "cs"
   },
   "kpis": {
     "total_customers": 2681,
@@ -220,13 +221,13 @@
   },
   "campaigns": [
     {
-      "objective": "Re-engage lapsed loyal customers",
+      "objective": "Zvýšit frekvenci; větší košík",
       "channel": "E-mail",
-      "offer": "Exkluzivní slevu 10% na další nákup",
-      "headline": "Vrať se a užij si výhodu!",
-      "rationale": "Motivuje k rychlému návratu, využívá historická data o nákupu.",
+      "offer": "Dvojnásobné věrnostní body",
+      "headline": "Dvojnásobné věrnostní body",
+      "rationale": "Pravidlové výchozí nastavení.",
       "priority": "high",
-      "_source": "gemma3:4b",
+      "_source": "fallback",
       "estimate": {
         "assumed_response_rate": 0.15,
         "expected_responders": 134,
@@ -236,13 +237,13 @@
       "llm_priority": "high"
     },
     {
-      "objective": "Re-engage lapsed Champions & boost sales",
+      "objective": "Odměnit a rozšířit nákup; udržet vztah",
       "channel": "E-mail",
-      "offer": "Exkluzivní slevu 10% na další objednávku",
-      "headline": "Vrať se a objev nové produkty!",
-      "rationale": "Personalizovaná e-mailová kampaň s atraktivní nabídkou pro věrné zákazníky.",
+      "offer": "VIP přístup k novinkám + dárek",
+      "headline": "VIP přístup k novinkám + dárek",
+      "rationale": "Pravidlové výchozí nastavení.",
       "priority": "high",
-      "_source": "gemma3:4b",
+      "_source": "fallback",
       "estimate": {
         "assumed_response_rate": 0.25,
         "expected_responders": 118,
@@ -252,13 +253,13 @@
       "llm_priority": "high"
     },
     {
-      "objective": "Re-engage lapsed customers & boost sales",
-      "channel": "E-mail",
-      "offer": "Exkluzivní slevu 15% na první objednávku",
-      "headline": "Získejte zpět svou oblíbenou značku!",
-      "rationale": "Personalizovaná e-mailová kampaň s atraktivní nabídkou pro zaneprázdněné zákazníky.",
+      "objective": "Získat zpět, než odejdou",
+      "channel": "E-mail+SMS",
+      "offer": "Návratová nabídka na 14 dní",
+      "headline": "Návratová nabídka na 14 dní",
+      "rationale": "Pravidlové výchozí nastavení.",
       "priority": "medium",
-      "_source": "gemma3:4b",
+      "_source": "fallback",
       "estimate": {
         "assumed_response_rate": 0.08,
         "expected_responders": 42,
@@ -268,13 +269,13 @@
       "llm_priority": "high"
     },
     {
-      "objective": "Increase first purchase conversion rate",
+      "objective": "Podpořit klíčový druhý nákup",
       "channel": "E-mail",
-      "offer": "Exkluzivní slevu 10% na první objednávku",
-      "headline": "Objevte náš svět! Sleva pro nové zákazníky!",
-      "rationale": "Personalizovaná e-mailová kampaň s atraktivní nabídkou motivuje k prvnímu nákupu.",
+      "offer": "Doprava zdarma na druhou objednávku",
+      "headline": "Doprava zdarma na druhou objednávku",
+      "rationale": "Pravidlové výchozí nastavení.",
       "priority": "medium",
-      "_source": "gemma3:4b",
+      "_source": "fallback",
       "estimate": {
         "assumed_response_rate": 0.2,
         "expected_responders": 49,
@@ -284,13 +285,13 @@
       "llm_priority": "high"
     },
     {
-      "objective": "Re-engage dormant customers & drive sales",
+      "objective": "Reaktivovat, nebo levně opustit",
       "channel": "E-mail",
-      "offer": "Exkluzivní slevu 10% na první objednávku",
-      "headline": "Znovu objevíte naše produkty? Získejte 10%",
-      "rationale": "Personalizovaná e-mailová kampaň s atraktivní nabídkou pro aktivaci.",
+      "offer": "Chybíte nám – dárek k návratu",
+      "headline": "Chybíte nám – dárek k návratu",
+      "rationale": "Pravidlové výchozí nastavení.",
       "priority": "low",
-      "_source": "gemma3:4b",
+      "_source": "fallback",
       "estimate": {
         "assumed_response_rate": 0.04,
         "expected_responders": 22,

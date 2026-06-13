@@ -57,7 +57,7 @@
     <div class="sub" data-i="sub">data setup</div>
     <div class="badge" data-i="badge">🔒 Data stays on this machine</div>
     <a class="nav" href="/" data-i="nav_dash">← Dashboard</a>
-    <a class="nav" href="#" id="langtoggle" data-i-title="t_uilang" title="UI language">🌐 CZ</a>
+    <a class="nav" href="#" id="langtoggle" data-i-title="t_switch" title="UI language">🌐 CZ</a>
   </header>
 
   <!-- ============ 1 · upload a file ============ -->
@@ -164,7 +164,7 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g,
 const UI = {
 en:{
   sub:'data setup', badge:'🔒 Data stays on this machine', nav_dash:'← Dashboard',
-  t_uilang:'UI language',
+  t_switch:'Switch to Czech',
   footer:'SegSmart · MBA Project 2026 · runs fully offline', f_dash:'dashboard',
   h_upload:'Upload a file',
   hint_upload:'CSV, TSV or Excel — column names in any language, any encoding, any delimiter. A local model proposes how it maps to our format; you confirm. Nothing leaves this machine.',
@@ -207,7 +207,7 @@ en:{
 },
 cs:{
   sub:'nastavení dat', badge:'🔒 Data zůstávají na tomto počítači', nav_dash:'← Přehled',
-  t_uilang:'Jazyk rozhraní',
+  t_switch:'Přepnout do angličtiny',
   footer:'SegSmart · MBA projekt 2026 · běží zcela offline', f_dash:'přehled',
   h_upload:'Nahrát soubor',
   hint_upload:'CSV, TSV nebo Excel – názvy sloupců v libovolném jazyce, kódování i s libovolným oddělovačem. Lokální model navrhne mapování na náš formát; vy ho potvrdíte. Nic neopouští tento počítač.',

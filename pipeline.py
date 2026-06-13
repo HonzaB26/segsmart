@@ -184,9 +184,17 @@ def _contact_map(df) -> dict:
     return {"email": email, "name": name}
 
 
+# common ISO currency codes → the symbol the dashboard and mailings display.
+# a source/config can hand us "CZK" instead of "Kč"; normalising here keeps the
+# code out of the UI and out of the language heuristic below (CZK→Kč→cs).
+_CURRENCY_SYMBOL = {"CZK": "Kč", "EUR": "€", "USD": "$", "GBP": "£"}
+
+
 def analyze(df, currency="£", use_llm=True, out="out/result.json",
             lang=None, source_label=None):
     t0 = time.time()
+    if isinstance(currency, str):
+        currency = _CURRENCY_SYMBOL.get(currency.strip().upper(), currency.strip())
     if lang is None:
         lang = "cs" if source_label == "eshop" or currency == "Kč" else "en"
 
