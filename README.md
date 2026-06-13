@@ -43,6 +43,7 @@ The local model isn't a compromise. It's the moat.
 | **Automatic segmentation** | RFM scoring → 5 named, explainable segments |
 | **Cross-check** | KMeans clustering on behavioral features, compared by adjusted Rand index |
 | **Seasonality** | Monthly revenue index → the peak becomes a campaign hook |
+| **External drivers** | Upload a daily CSV of your own factors (ad spend, promo days, FX rate, weather…) → % revenue lift on flag days / correlation per factor, scored locally against your daily revenue (no customer data needed) |
 | **AI campaign drafts** | A **local LLM** writes objective / channel / offer / headline per segment — copy only, it never invents discount codes |
 | **Owner-set discounts** | The model never promises discounts or codes; YOU add the real one (% / amount / free shipping + your shop's code) and the copy regenerates around it |
 | **Launch** | An approved card becomes a mailing artifact — subject, body, recipients **with e-mail + name** — in `out/mailings/` (+ import-ready CSV), optionally POSTed to your mailer webhook (n8n / Zapier / own script) |
@@ -105,6 +106,9 @@ mapping, not new analytics code. That's the seam the whole system pivots on.
   Bilingual (EN/CS). Quality model for Czech copy = `qwen3.6:35b`; fast default =
   `gemma4:e4b`. Deterministic impact estimates + a rule-based fallback so it never
   breaks offline.
+- **`external.py`** — scores an owner-uploaded daily factors CSV (FX, weather, promo
+  flags…) against the persisted no-PII daily revenue series: % lift for 0/1 flags,
+  Pearson correlation for numeric factors. Deterministic, no LLM, no network.
 - **`connectors.py`** — BigQuery / SQL / Shoptet adapters → canonical frame.
 
 ### Two-model strategy

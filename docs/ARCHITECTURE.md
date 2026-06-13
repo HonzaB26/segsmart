@@ -43,6 +43,9 @@ on disk instead of an account.
                        ② KMeans on log-scaled features (cross-check)
                        validation: silhouette + adjusted Rand index ①↔②
    seg/seasonality.py  revenue index by calendar month (exposure-normalized)
+   seg/external.py     owner-uploaded daily factors (FX/weather/promo) scored
+                       against a persisted no-PII daily revenue series:
+                       % lift for 0/1 flags, correlation for numeric factors
                   │
                   ▼            NARRATIVE
    seg/campaigns.py    local LLM (Ollama) drafts one campaign card per
@@ -206,6 +209,7 @@ renders once and leaves nothing on disk.
 | `/api/preview_source` | POST | connector test: first rows + mapping |
 | `/api/run` | POST | ad-hoc upload run (not persisted) |
 | `/api/run_config` | POST | run from config (persisted) |
+| `/api/external_impact` | POST | score an uploaded daily factors CSV against the persisted daily revenue (no customer data read) |
 | `/api/refine_card` | POST | rewrite a card around an owner-set discount |
 | `/api/launch` | POST | approved card → mailing artifact (+ webhook) |
 
