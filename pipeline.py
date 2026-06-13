@@ -246,8 +246,46 @@ def analyze(df, currency="£", use_llm=True, out="out/result.json",
         print(f"  [daily sales series skipped: {e}]")
         external = {"daily": []}
 
-    # AI campaign cards (local LLM)
-    cards = all_cards(prof, hook, use_llm=use_llm, currency=currency, lang=lang)
+    # prospects: customers who look like the best segment but aren't in it yet —
+    # feeds both the audience table (result['prospects']) and a 'grow' campaign
+    # card. Cosine-kNN on the same scaled features; see seg/lookalikes.py. No PII
+    # beyond the existing contact map.
+    prospects = {"for_segment": None, "items": []}
+    prospect_stats = None
+    try:
+        from seg.lookalikes import expand_segment
+        seed = ("Champions" if "Champions" in prof.index
+                else (prof["rev_share_pct"].idxmax() if len(prof) else None))
+        if seed:
+            prospects["for_segment"] = seed
+            pf = expand_segment(feat, seed, k=15)
+            for r in pf.itertuples():
+                cid = str(r.customer_id)
+                prospects["items"].append({
+                    "id": cid, "current_segment": r.segment,
+                    "similarity": float(r.similarity),
+                    "recency": int(r.recency), "frequency": int(r.frequency),
+                    "monetary": round(float(r.monetary), 2),
+                    "email": contact["email"].get(cid, ""),
+                    "name": contact["name"].get(cid, ""),
+                })
+            if len(pf):
+                total_rev = float(meta["revenue"]) or 1.0
+                prospect_stats = {
+                    "for_segment": seed, "customers": int(len(pf)),
+                    "share_pct": round(len(pf) / max(meta["customers"], 1) * 100, 1),
+                    "rev_share_pct": round(float(pf["monetary"].sum()) / total_rev * 100, 1),
+                    "avg_recency": float(pf["recency"].mean()),
+                    "avg_frequency": float(pf["frequency"].mean()),
+                    "avg_monetary": float(pf["monetary"].mean()),
+                    "avg_order_value": float(pf["avg_order_value"].mean()),
+                }
+    except Exception as e:
+        print(f"  [prospects skipped: {e}]")
+
+    # AI campaign cards (local LLM) — incl. one 'grow' card for the prospects
+    cards = all_cards(prof, hook, use_llm=use_llm, currency=currency, lang=lang,
+                      prospects=prospect_stats)
     kpis["ai_campaigns"] = len(cards)
 
     # product mix: segment × category cross-tab (uses LLM only for categorisation)
@@ -267,31 +305,6 @@ def analyze(df, currency="£", use_llm=True, out="out/result.json",
             "avg_recency": float(row["avg_recency"]), "avg_frequency": float(row["avg_frequency"]),
             "avg_monetary": float(row["avg_monetary"]), "avg_order_value": float(row["avg_order_value"]),
         })
-
-    # prospects: "find more like my best" — non-members closest to the most
-    # valuable present segment (Champions if any, else top revenue share).
-    # Cosine-kNN on the same scaled features; see seg/lookalikes.py. No PII
-    # beyond the existing contact map.
-    try:
-        from seg.lookalikes import expand_segment
-        seed = ("Champions" if any(s["name"] == "Champions" for s in segments)
-                else max(segments, key=lambda s: s["rev_share_pct"])["name"]
-                if segments else None)
-        prospects = {"for_segment": seed, "items": []}
-        if seed:
-            for r in expand_segment(feat, seed, k=15).itertuples():
-                cid = str(r.customer_id)
-                prospects["items"].append({
-                    "id": cid, "current_segment": r.segment,
-                    "similarity": float(r.similarity),
-                    "recency": int(r.recency), "frequency": int(r.frequency),
-                    "monetary": round(float(r.monetary), 2),
-                    "email": contact["email"].get(cid, ""),
-                    "name": contact["name"].get(cid, ""),
-                })
-    except Exception as e:
-        print(f"  [prospects skipped: {e}]")
-        prospects = {"for_segment": None, "items": []}
 
     result = {
         "meta": meta,

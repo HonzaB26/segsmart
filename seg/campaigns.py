@@ -196,7 +196,62 @@ def card_for_segment(seg_name: str, prof_row: dict, hook: dict, use_llm=True,
 
 
 # Rough, transparent uplift assumptions per segment (owner can tune these).
-RESPONSE = {"Champions": 0.25, "Loyal": 0.15, "At-risk": 0.08, "New": 0.20, "Dormant": 0.04}
+# "Prospects" = lookalikes of the best segment; warm but not yet there, so
+# response sits between Loyal and New.
+RESPONSE = {"Champions": 0.25, "Loyal": 0.15, "At-risk": 0.08, "New": 0.20,
+            "Dormant": 0.04, "Prospects": 0.12}
+
+
+def card_for_prospects(seed: str, pstats: dict, hook: dict, use_llm=True,
+                       currency="£", lang="en") -> dict:
+    """One campaign card for the prospect shortlist — customers who shop like
+    `seed` (your best segment) but aren't in it yet. Goal: move them up."""
+    def _fb():
+        if lang == "cs":
+            obj = f"Posunout nadějné zákazníky mezi „{seed}“"
+            offer, ch = "Pobídka k dalšímu nákupu", "E-mail"
+            rat = "Pravidlové výchozí nastavení."
+        else:
+            obj = f"Move high-potential shoppers up into {seed}"
+            offer, ch = "An incentive for their next order", "Email"
+            rat = "Rule-based default."
+        return {"objective": obj, "channel": ch, "offer": offer, "headline": offer,
+                "rationale": rat, "priority": "medium", "_source": "fallback"}
+
+    if not use_llm:
+        c = _fb()
+    else:
+        prompt = (
+            f"Currency: all money is in {currency}. Use {currency} in any amounts.\n"
+            f"Audience: high-potential customers who closely resemble your best "
+            f"segment ('{seed}') but have NOT reached it yet — the goal is to move "
+            f"them up into {seed}.\n"
+            f"Count: {int(pstats['customers'])} customers\n"
+            f"Avg days since last purchase: {pstats['avg_recency']:.0f}\n"
+            f"Avg orders per customer: {pstats['avg_frequency']:.1f}\n"
+            f"Avg spend per customer: {currency}{pstats['avg_monetary']:.0f}\n"
+            f"Avg order value: {currency}{pstats['avg_order_value']:.0f}\n"
+            f"Seasonal context: peak month is {hook['peak_month']} "
+            f"(+{hook['peak_uplift_pct']}% vs average), low month is {hook['low_month']}.\n"
+            f"Design ONE concrete campaign to convert them, as JSON."
+        )
+        raw = _ollama(prompt, SYSTEM_CS if lang == "cs" else SYSTEM_EN)
+        try:
+            c = _sanitize_card(_extract_json(raw))
+            if has_invented_discount(c):
+                c = _fb()
+            else:
+                c.setdefault("priority", "medium")
+                c["_source"] = MODEL
+        except Exception:
+            c = _fb()
+
+    c["estimate"] = _estimate("Prospects", pstats)
+    c["segment"] = "Prospects"            # display token; not an RFM segment
+    c["audience"] = "prospects"           # launch targets the prospect list
+    c["seed_segment"] = seed
+    c["llm_priority"] = c.get("priority", "medium")
+    return c
 
 
 def _estimate(seg: str, p: dict) -> dict:
@@ -281,11 +336,17 @@ def apply_discount(card: dict, discount: dict, lang="en", currency="£",
     return card
 
 
-def all_cards(profiles, hook: dict, use_llm=True, currency="£", lang="en") -> list[dict]:
+def all_cards(profiles, hook: dict, use_llm=True, currency="£", lang="en",
+              prospects: dict | None = None) -> list[dict]:
     cards = []
     for seg, row in profiles.iterrows():
         cards.append(card_for_segment(seg, row.to_dict(), hook, use_llm=use_llm,
                                       currency=currency, lang=lang))
+    # optional: one extra card targeting the prospect shortlist (grow the best
+    # segment). pstats carries the aggregate stats + the seed segment name.
+    if prospects and int(prospects.get("customers", 0)) > 0:
+        cards.append(card_for_prospects(prospects["for_segment"], prospects, hook,
+                                        use_llm=use_llm, currency=currency, lang=lang))
     # priority is set DETERMINISTICALLY by revenue opportunity, not by the LLM:
     # the model over-rates everything 'high'. Rank by est. incremental revenue.
     ranked = sorted(cards, key=lambda c: -c["estimate"]["est_incremental_revenue"])

@@ -17,7 +17,7 @@
     "repeat_rate_pct": 85.7,
     "avg_order_value": 2696.45,
     "revenue": 6301596.15,
-    "ai_campaigns": 5
+    "ai_campaigns": 6
   },
   "segments": [
     {
@@ -464,12 +464,30 @@
       "llm_priority": "medium"
     },
     {
+      "objective": "Posunout nadějné zákazníky mezi „Champions“",
+      "channel": "E-mail",
+      "offer": "Pobídka k dalšímu nákupu",
+      "headline": "Pobídka k dalšímu nákupu",
+      "rationale": "Pravidlové výchozí nastavení.",
+      "priority": "medium",
+      "_source": "fallback",
+      "estimate": {
+        "assumed_response_rate": 0.12,
+        "expected_responders": 2,
+        "est_incremental_revenue": 7305
+      },
+      "segment": "Prospects",
+      "audience": "prospects",
+      "seed_segment": "Champions",
+      "llm_priority": "medium"
+    },
+    {
       "objective": "Získat zpět neaktivní zákazníky do obchodu",
       "channel": "E-mail",
       "offer": "Návratová nabídka s odměnou za věrnost",
       "headline": "Vítejte zpět, máme pro vás připravenou odměnu",
       "rationale": "Nízkorozpočtový kanál osloví neaktivní zákazníky s dlouhou historií nákupů a vysokým průměrným obratem.",
-      "priority": "medium",
+      "priority": "low",
       "_source": "qwen3.6:35b",
       "estimate": {
         "assumed_response_rate": 0.08,

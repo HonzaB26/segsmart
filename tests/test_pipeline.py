@@ -10,7 +10,11 @@ def test_pipeline_end_to_end_no_llm(synth_csv, tmp_path):
         assert k in r
     assert r["meta"]["currency"] == "Kč"
     assert 0 < len(r["segments"]) <= 5
-    assert len(r["campaigns"]) == len(r["segments"])
+    # one card per segment, plus an optional 'grow' card for the prospects
+    seg_cards = [c for c in r["campaigns"] if c.get("audience") != "prospects"]
+    pros_cards = [c for c in r["campaigns"] if c.get("audience") == "prospects"]
+    assert len(seg_cards) == len(r["segments"])
+    assert len(pros_cards) == (1 if r.get("prospects", {}).get("items") else 0)
     assert out.exists()
 
 

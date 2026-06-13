@@ -206,7 +206,7 @@
 
   <div class="card" id="prospectcard" style="display:none;margin-top:16px">
     <h3><span data-i="h_prospects">Grow your best segment</span> <span class="sub" id="prospecttag"></span></h3>
-    <div class="hint" data-i="prospects_hint">Customers most like your top segment but not in it yet — the “nudge them up” shortlist. Cosine nearest-neighbours on the same RFM features, computed on this machine.</div>
+    <div class="hint" data-i="prospects_hint">Customers who shop like your best segment but aren’t in it yet — a ready shortlist to win over. Worked out privately on this machine.</div>
     <div id="prospects" style="margin-top:12px;overflow-x:auto"></div>
   </div>
 
@@ -339,9 +339,10 @@ en:{
   pm_no_data:'No product data — check that your source includes a product column.',
   pm_rev:'Revenue', pm_custs:'Customers',
   h_prospects:'Grow your best segment',
-  prospects_hint:'Customers most like your top segment but not in it yet — the “nudge them up” shortlist. Cosine nearest-neighbours on the same RFM features, computed on this machine.',
+  prospects_hint:'Customers who shop like your best segment but aren’t in it yet — a ready shortlist to win over. Worked out privately on this machine.',
   pr_for:'· more like your {s}',
-  pr_cust:'customer', pr_current:'current segment', pr_sim:'similarity',
+  pr_chip:'Prospects',
+  pr_cust:'customer', pr_current:'current segment', pr_sim:'match',
   pr_recency:'days since last order', pr_freq:'orders', pr_spend:'total spent',
 },
 cs:{
@@ -431,9 +432,10 @@ cs:{
   pm_no_data:'Žádná data o produktech – zkontrolujte, zda váš zdroj obsahuje sloupec produktu.',
   pm_rev:'Tržby', pm_custs:'Zákazníků',
   h_prospects:'Rozšiřte svůj nejlepší segment',
-  prospects_hint:'Zákazníci nejpodobnější vašemu nejlepšímu segmentu, kteří v něm ještě nejsou – užší výběr „k posunutí výš“. Kosinová podobnost nad stejnými RFM znaky, spočítaná na tomto počítači.',
+  prospects_hint:'Zákazníci, kteří nakupují podobně jako váš nejlepší segment, ale ještě do něj nepatří – hotový užší výběr, který můžete oslovit. Spočítáno soukromě na tomto počítači.',
   pr_for:'· podobní segmentu {s}',
-  pr_cust:'zákazník', pr_current:'současný segment', pr_sim:'podobnost',
+  pr_chip:'Kandidáti',
+  pr_cust:'zákazník', pr_current:'současný segment', pr_sim:'shoda',
   pr_recency:'dní od poslední objednávky', pr_freq:'objednávky', pr_spend:'celkem utraceno',
 },
 };
@@ -756,8 +758,13 @@ function renderCampaigns(r){
     const e=cp.estimate;
     const pri = ['high','medium','low'].includes(cp.priority)?cp.priority:'medium';
     const d=cp.discount;
-    return `<div class="camp" data-idx="${i}" tabindex="0" style="border-left-color:${(r.segments.find(s=>s.name===cp.segment)||{}).color||'#888'}">
-      <div class="top"><span class="seg">${esc(segName(cp.segment))}</span>
+    const isPros = cp.audience==='prospects';
+    const chip = isPros ? t('pr_chip') : segName(cp.segment);
+    const color = isPros
+      ? ((r.segments.find(s=>s.name===cp.seed_segment)||{}).color||'#7c79b8')
+      : ((r.segments.find(s=>s.name===cp.segment)||{}).color||'#888');
+    return `<div class="camp" data-idx="${i}" tabindex="0" style="border-left-color:${color}">
+      <div class="top"><span class="seg">${esc(chip)}</span>
         <span class="pri ${pri}">${esc(pri)}</span></div>
       <button class="edit" data-act="edit" data-i="${i}" title="${t('b_edit')}" aria-label="${t('b_edit')}">✏️</button>
       <span class="more">${t('more')}</span>
@@ -851,8 +858,10 @@ async function cardAction(act, i){
     return;
   }
   if(act==='launch'){
-    const recipients=(CUR.customers||[]).filter(x=>x.segment===cp.segment)
-      .map(x=>({id:x.id, email:x.email||'', name:x.name||''}));
+    const recipients = cp.audience==='prospects'
+      ? ((CUR.prospects||{}).items||[]).map(x=>({id:x.id, email:x.email||'', name:x.name||''}))
+      : (CUR.customers||[]).filter(x=>x.segment===cp.segment)
+          .map(x=>({id:x.id, email:x.email||'', name:x.name||''}));
     // step 1: ask the server for the EXACT e-mail and show it for review —
     // nothing is saved or delivered until the user confirms
     st.textContent=t('launching');
@@ -955,8 +964,20 @@ function openCamp(idx){
   if(!CUR) return;
   const cp=CUR.campaigns[idx]; if(!cp) return;
   const c=CUR.meta.currency||'£';
-  const seg=CUR.segments.find(s=>s.name===cp.segment)||{};
-  const color=seg.color||'#888';
+  const isPros = cp.audience==='prospects';
+  let seg, color, chipName;
+  if(isPros){
+    const items=(CUR.prospects||{}).items||[], n=items.length;
+    const avg=k=>n?items.reduce((a,x)=>a+(x[k]||0),0)/n:null;
+    seg={customers:n, share_pct:null, rev_share_pct:null, avg_recency:avg('recency'),
+         avg_frequency:avg('frequency'), avg_monetary:avg('monetary'), avg_order_value:null};
+    color=(CUR.segments.find(s=>s.name===cp.seed_segment)||{}).color||'#7c79b8';
+    chipName=t('pr_chip');
+  } else {
+    seg=CUR.segments.find(s=>s.name===cp.segment)||{};
+    color=seg.color||'#888';
+    chipName=segName(cp.segment);
+  }
   const e=cp.estimate||{};
   const pri=['high','medium','low'].includes(cp.priority)?cp.priority:'medium';
   const rate=Math.round((e.assumed_response_rate||0)*100);
@@ -967,7 +988,7 @@ function openCamp(idx){
   $('#campBox').style.borderTopColor=color;
   $('#campBody').innerHTML=
     `<div class="mseg" id="cmSeg"><span class="dot" style="background:${color};width:14px;height:14px"></span>`
-    + `${esc(segName(cp.segment))}<span class="pri ${pri}" style="margin-left:4px">${esc(pri)}</span></div>`
+    + `${esc(chipName)}<span class="pri ${pri}" style="margin-left:4px">${esc(pri)}</span></div>`
     + `<div class="mhead">“${esc(cp.headline)}”</div>`
     + `<div class="mobj">${esc(cp.objective||'')}</div>`
     + (cp.body?`<div class="sec">${t('m_body')}</div><div class="mbody">${esc(cp.body)}</div>`:'')
