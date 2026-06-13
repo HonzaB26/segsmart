@@ -234,16 +234,16 @@
         "est_incremental_revenue": 70913
       },
       "segment": "Loyal",
-      "llm_priority": "high"
+      "llm_priority": "medium"
     },
     {
-      "objective": "Odměnit a rozšířit nákup; udržet vztah",
+      "objective": "Zvýšení opakování nákupů u klíčových zákazníků",
       "channel": "E-mail",
-      "offer": "VIP přístup k novinkám + dárek",
-      "headline": "VIP přístup k novinkám + dárek",
-      "rationale": "Pravidlové výchozí nastavení.",
+      "offer": "Odměna za věrnost v podobě dárkového balení k objednávce",
+      "headline": "Pro naše nejlepší zákazníky máme překvapení",
+      "rationale": "Cílí na nejvíce ziskovou skupinu s vysokou angažovaností. E-mail je nákladově efektivní nástroj pro udržení loajality.",
       "priority": "high",
-      "_source": "fallback",
+      "_source": "qwen3.6:35b",
       "estimate": {
         "assumed_response_rate": 0.25,
         "expected_responders": 118,
@@ -253,13 +253,13 @@
       "llm_priority": "high"
     },
     {
-      "objective": "Získat zpět, než odejdou",
-      "channel": "E-mail+SMS",
-      "offer": "Návratová nabídka na 14 dní",
-      "headline": "Návratová nabídka na 14 dní",
-      "rationale": "Pravidlové výchozí nastavení.",
+      "objective": "Získat zpět neaktivní zákazníky do obchodu",
+      "channel": "E-mail",
+      "offer": "Návratová nabídka s odměnou za věrnost",
+      "headline": "Vítejte zpět, máme pro vás připravenou odměnu",
+      "rationale": "Nízkorozpočtový kanál osloví neaktivní zákazníky s dlouhou historií nákupů a vysokým průměrným obratem.",
       "priority": "medium",
-      "_source": "fallback",
+      "_source": "qwen3.6:35b",
       "estimate": {
         "assumed_response_rate": 0.08,
         "expected_responders": 42,
@@ -282,16 +282,16 @@
         "est_incremental_revenue": 22775
       },
       "segment": "New",
-      "llm_priority": "high"
+      "llm_priority": "medium"
     },
     {
-      "objective": "Reaktivovat, nebo levně opustit",
+      "objective": "Znovuaktivizovat nečinné zákazníky",
       "channel": "E-mail",
-      "offer": "Chybíte nám – dárek k návratu",
-      "headline": "Chybíte nám – dárek k návratu",
-      "rationale": "Pravidlové výchozí nastavení.",
+      "offer": "Návratová nabídka s dárkem k objednávce",
+      "headline": "Chybíte nám, vrátíte se?",
+      "rationale": "E-mail má nízké náklady a cílí na dormantní zákazníky s dlouhou nečinností a malým podílem na obratu.",
       "priority": "low",
-      "_source": "fallback",
+      "_source": "qwen3.6:35b",
       "estimate": {
         "assumed_response_rate": 0.04,
         "expected_responders": 22,
