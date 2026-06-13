@@ -754,20 +754,41 @@ function genBody(cp){
   return lines.join('\n');
 }
 
+// dominant current segment of the prospect shortlist (what they're being lifted FROM)
+function prospectSource(){
+  const items=(CUR&&CUR.prospects&&CUR.prospects.items)||[];
+  if(!items.length) return null;
+  const n={}; items.forEach(x=>{n[x.current_segment]=(n[x.current_segment]||0)+1;});
+  return Object.keys(n).sort((a,b)=>n[b]-n[a])[0];
+}
+// the prospect 'grow' card is an ACTION, not a segment: label it "source → target"
+// and sit it right after its dominant source segment, so it reads as an uplift.
+function prospectChip(cp){ return segName(prospectSource()||cp.seed_segment)+' → '+segName(cp.seed_segment); }
+function campOrder(cards){          // ORIGINAL indices, in display order
+  const order=[]; let p=-1;
+  cards.forEach((cp,i)=>{ if(cp.audience==='prospects') p=i; else order.push(i); });
+  if(p<0) return order;
+  let at=order.findIndex(i=>cards[i].segment===prospectSource());
+  if(at<0) at=order.length-1;
+  order.splice(at+1,0,p);
+  return order;
+}
+
 function renderCampaigns(r){
   CUR=r;
   const c = r.meta.currency||'£';
-  $('#camps').innerHTML = r.campaigns.map((cp,i)=>{
+  $('#camps').innerHTML = campOrder(r.campaigns).map(i=>{
+    const cp=r.campaigns[i];
     const e=cp.estimate;
     const pri = ['high','medium','low'].includes(cp.priority)?cp.priority:'medium';
     const d=cp.discount;
     const isPros = cp.audience==='prospects';
-    const chip = isPros ? t('pr_chip') : segName(cp.segment);
+    const chip = isPros ? prospectChip(cp) : segName(cp.segment);
     const color = isPros
       ? ((r.segments.find(s=>s.name===cp.seed_segment)||{}).color||'#7c79b8')
       : ((r.segments.find(s=>s.name===cp.segment)||{}).color||'#888');
-    return `<div class="camp" data-idx="${i}" tabindex="0" style="border-left-color:${color}">
-      <div class="top"><span class="seg">${esc(chip)}</span>
+    return `<div class="camp${isPros?' grow':''}" data-idx="${i}" tabindex="0" style="border-left-color:${color}${isPros?';border-left-style:dashed':''}">
+      <div class="top"><span class="seg">${isPros?'↑ ':''}${esc(chip)}</span>
         <span class="pri ${pri}">${esc(pri)}</span></div>
       <button class="edit" data-act="edit" data-i="${i}" title="${t('b_edit')}" aria-label="${t('b_edit')}">✏️</button>
       <span class="more">${t('more')}</span>
@@ -988,7 +1009,7 @@ function openCamp(idx){
     seg={customers:n, share_pct:null, rev_share_pct:null, avg_recency:avg('recency'),
          avg_frequency:avg('frequency'), avg_monetary:avg('monetary'), avg_order_value:null};
     color=(CUR.segments.find(s=>s.name===cp.seed_segment)||{}).color||'#7c79b8';
-    chipName=t('pr_chip');
+    chipName='↑ '+prospectChip(cp);
   } else {
     seg=CUR.segments.find(s=>s.name===cp.segment)||{};
     color=seg.color||'#888';
