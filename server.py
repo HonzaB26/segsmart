@@ -12,6 +12,8 @@ POST /api/run_config     -> run from the saved config (persisted -> dashboard)
 POST /api/external_impact-> score an uploaded daily external-factors CSV against
                             the current run's daily revenue (no customer data read)
 POST /api/refine_card    -> rewrite a campaign card with an owner-set discount
+POST /api/update_card    -> save a manager's text edits to a campaign card
+                            (headline/body/objective/channel/offer/rationale) into result.json
 POST /api/launch         -> approved card -> mailing artifact in out/mailings/
                             (+ optional POST to config mailer.webhook_url)
 
@@ -220,6 +222,45 @@ class H(BaseHTTPRequestHandler):
                 from seg.external import impact_from_daily
                 out = impact_from_daily(daily, data.decode("utf-8", "replace"))
                 return self._send(200, json.dumps(out, ensure_ascii=False))
+            except Exception as e:
+                return self._send(500, json.dumps({"error": str(e)}))
+
+        # --- save a campaign manager's edits to a campaign card's TEXT ---
+        # only the free-text fields are writable; the deterministic estimate,
+        # segment and priority are never touched by this endpoint
+        if self.path == "/api/update_card":
+            try:
+                idx = req.get("index")
+                fields = req.get("fields") or {}
+                if not isinstance(idx, int) or not isinstance(fields, dict):
+                    return self._send(400, json.dumps(
+                        {"error": "body must be {index:int, fields:{...}}"}))
+                p = os.path.join(HERE, "out/result.json")
+                if not os.path.exists(p):
+                    return self._send(400, json.dumps(
+                        {"error": "no result yet — run a segmentation first"}))
+                with open(p, encoding="utf-8") as f:
+                    result = json.load(f)
+                cards = result.get("campaigns") or []
+                if not (0 <= idx < len(cards)):
+                    return self._send(400, json.dumps(
+                        {"error": f"index {idx} out of range (0..{len(cards)-1})"}))
+                allowed = ("headline", "body", "objective", "channel", "offer", "rationale")
+                edited = False
+                for k in allowed:
+                    if k in fields and isinstance(fields[k], str):
+                        cards[idx][k] = fields[k].strip()
+                        edited = True
+                if not edited:
+                    return self._send(400, json.dumps(
+                        {"error": "no editable text fields supplied"}))
+                cards[idx]["edited"] = True             # mark as manager-edited
+                tmp = p + ".tmp"
+                with open(tmp, "w", encoding="utf-8") as f:
+                    json.dump(result, f, ensure_ascii=False)
+                os.replace(tmp, p)                      # atomic write
+                return self._send(200, json.dumps(
+                    {"saved": True, "index": idx, "card": cards[idx]}, ensure_ascii=False))
             except Exception as e:
                 return self._send(500, json.dumps({"error": str(e)}))
 

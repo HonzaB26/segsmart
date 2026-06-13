@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -53,6 +53,8 @@
   .pri.medium{background:rgba(245,158,11,.18);color:#fcd34d}
   .pri.low{background:rgba(148,163,184,.18);color:#cbd5e1}
   .camp .head{font-size:14px;margin:6px 0 3px}
+  .camp .body{font-size:12.5px;color:var(--ink);white-space:pre-wrap;margin:4px 0 5px;
+              padding:7px 9px;background:var(--panel);border-radius:8px;border:1px solid var(--line)}
   .camp .det{color:var(--mut);font-size:12.5px}
   .camp .est{margin-top:7px;font-size:12.5px;color:var(--teal)}
   .camp .src{position:absolute;right:12px;bottom:10px;font-size:10px;color:#7c79b8}
@@ -92,7 +94,16 @@
   .camp{cursor:pointer;transition:border-color .12s,transform .12s,box-shadow .12s}
   .camp:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.28)}
   .camp:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
-  .camp .more{position:absolute;right:12px;top:12px;font-size:11px;color:var(--mut)}
+  .camp .more{position:absolute;right:34px;top:12px;font-size:11px;color:var(--mut)}
+  .camp .edit{position:absolute;right:10px;top:8px;background:none;border:none;cursor:pointer;
+              font-size:14px;line-height:1;padding:3px 5px;border-radius:7px;color:var(--mut);opacity:.7}
+  .camp .edit:hover{opacity:1;background:var(--panel);color:var(--ink)}
+  .editform{margin-top:9px;display:grid;gap:7px;background:var(--panel);border:1px solid var(--line);
+            border-radius:10px;padding:10px}
+  .editform label{display:block;font-size:11px;color:var(--mut);margin-bottom:2px}
+  .editform input,.editform textarea{width:100%;background:var(--panel2);color:var(--ink);
+            border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:13px/1.45 inherit;resize:vertical}
+  .editform textarea{min-height:54px}
   .modal{position:fixed;inset:0;background:rgba(10,8,30,.66);backdrop-filter:blur(2px);
          display:none;align-items:center;justify-content:center;padding:22px;z-index:50}
   .modal.open{display:flex}
@@ -105,6 +116,8 @@
   .modal .mseg{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:800}
   .modal .mhead{font-size:20px;font-weight:700;margin:14px 0 4px;line-height:1.3}
   .modal .mobj{color:var(--mut);font-size:13.5px;margin-bottom:14px}
+  .modal .mbody{white-space:pre-wrap;font-size:13.5px;line-height:1.5;background:var(--panel2);
+                border-radius:8px;padding:10px 12px;margin-bottom:6px}
   .modal .row{display:grid;grid-template-columns:120px 1fr;gap:6px 14px;font-size:13.5px;
               padding:8px 0;border-bottom:1px solid var(--line)}
   .modal .row .lbl{color:var(--mut)}
@@ -289,6 +302,10 @@ en:{
   empty:'No result yet — <a href="/setup" style="color:var(--teal)">set up your data source</a> to get started.',
   more:'details →', m_campaign:'Campaign', m_channel:'Channel', m_offer:'Offer',
   m_rationale:'Rationale', m_impact:'Projected impact',
+  b_edit:'Edit campaign', m_headline:'Headline', m_objective:'Objective',
+  m_body:'Campaign text', ph_body:'Write the message your customers will receive…',
+  b_save:'💾 Save', need_headline:'headline can’t be empty',
+  saving:'saving…', save_failed:'save failed:',
   m_impact_note:'est. incremental revenue from ≈ {n} responders',
   m_formula:'{c} customers × {r}% response', m_aov:'avg order',
   m_context:'Segment context', m_customers:'Customers', m_revshare:'Revenue share',
@@ -368,6 +385,10 @@ cs:{
   empty:'Zatím žádný výsledek – začněte <a href="/setup" style="color:var(--teal)">nastavením zdroje dat</a>.',
   more:'detail →', m_campaign:'Kampaň', m_channel:'Kanál', m_offer:'Nabídka',
   m_rationale:'Zdůvodnění', m_impact:'Odhadovaný dopad',
+  b_edit:'Upravit kampaň', m_headline:'Hlavička', m_objective:'Cíl kampaně',
+  m_body:'Text kampaně', ph_body:'Napište zprávu, kterou zákazníci dostanou…',
+  b_save:'💾 Uložit', need_headline:'hlavička nesmí být prázdná',
+  saving:'ukládám…', save_failed:'uložení selhalo:',
   m_impact_note:'odhad dodatečných tržeb od ≈ {n} reagujících',
   m_formula:'{c} zákazníků × {r}% odezva', m_aov:'prům. objednávka',
   m_context:'Kontext segmentu', m_customers:'Zákazníků', m_revshare:'Podíl na tržbách',
@@ -677,6 +698,22 @@ $('#extrun').onclick=async ()=>{
 // campaign cards: render + owner-discount workflow + launch
 let CUR=null;   // last rendered result (campaign/launch handlers need it)
 
+// Build the default e-mail body exactly like seg/mailer.py _body(), so the
+// "Campaign text" editor is pre-filled with the message the customer would
+// actually receive (the text shown in the launch preview). The manager edits
+// THIS; once saved it is used verbatim at launch.
+function genBody(cp){
+  const lang=(CUR&&CUR.meta.language)||((CUR&&CUR.meta.currency)==='Kč'?'cs':'en');
+  const greet=lang==='cs'?'Dobrý den,':'Hello,';
+  const lines=[greet,'',cp.headline||''];
+  if(cp.offer && cp.offer!==cp.headline) lines.push('',cp.offer);
+  const d=cp.discount||{};
+  if(d.code) lines.push('',(lang==='cs'?('Váš kód: '+d.code):('Your code: '+d.code)));
+  lines.push('',(lang==='cs'?'Děkujeme, že u nás nakupujete.':'Thank you for shopping with us.'));
+  lines.push('',(lang==='cs'?'Váš tým':'Your team'));
+  return lines.join('\n');
+}
+
 function renderCampaigns(r){
   CUR=r;
   const c = r.meta.currency||'£';
@@ -687,13 +724,28 @@ function renderCampaigns(r){
     return `<div class="camp" data-idx="${i}" tabindex="0" style="border-left-color:${(r.segments.find(s=>s.name===cp.segment)||{}).color||'#888'}">
       <div class="top"><span class="seg">${esc(segName(cp.segment))}</span>
         <span class="pri ${pri}">${esc(pri)}</span></div>
+      <button class="edit" data-act="edit" data-i="${i}" title="${t('b_edit')}" aria-label="${t('b_edit')}">✏️</button>
       <span class="more">${t('more')}</span>
       <div class="head">“${esc(cp.headline)}”</div>
+      ${cp.body?`<div class="body">${esc(cp.body)}</div>`:''}
       <div class="det">${esc(cp.channel)} · ${esc(cp.offer)}</div>
       <div class="det" style="margin-top:3px">${esc(cp.rationale||'')}</div>
       <div class="est">${tf('est', {n:e.expected_responders,
         m:fmtMoney(e.est_incremental_revenue,c), p:Math.round(e.assumed_response_rate*100)})}</div>
       ${d&&d.code?`<div class="det" style="margin-top:3px">🎟 ${esc(d.code)}</div>`:''}
+      <div data-editform="${i}" class="editform" style="display:none">
+        <div><label>${t('m_headline')}</label><input data-e="headline" value="${esc(cp.headline)}"></div>
+        <div><label>${t('m_body')}</label><textarea data-e="body" rows="7" placeholder="${t('ph_body')}">${esc(cp.body||genBody(cp))}</textarea></div>
+        <div><label>${t('m_objective')}</label><textarea data-e="objective">${esc(cp.objective||'')}</textarea></div>
+        <div><label>${t('m_channel')}</label><input data-e="channel" value="${esc(cp.channel)}"></div>
+        <div><label>${t('m_offer')}</label><input data-e="offer" value="${esc(cp.offer)}"></div>
+        <div><label>${t('m_rationale')}</label><textarea data-e="rationale">${esc(cp.rationale||'')}</textarea></div>
+        <div class="controls" style="margin-top:0">
+          <button style="padding:5px 10px;font-size:12px" data-act="save" data-i="${i}">${t('b_save')}</button>
+          <button class="ghost" style="padding:5px 10px;font-size:12px" data-act="canceledit" data-i="${i}">${t('b_cancel')}</button>
+          <span class="hint" data-editstatus="${i}" style="margin:0"></span>
+        </div>
+      </div>
       <div class="controls" style="margin-top:9px">
         <button class="ghost" style="padding:5px 10px;font-size:12px" data-act="disc" data-i="${i}">${t('b_disc')}</button>
         <button style="padding:5px 10px;font-size:12px" data-act="launch" data-i="${i}">${t('b_launch')}</button>
@@ -717,7 +769,7 @@ function renderCampaigns(r){
   $('#llmtag').textContent = llmName.includes('fallback')?t('llm_rule'):'· '+llmName+' '+t('llm_dev');
 
   document.querySelectorAll('#camps [data-act]').forEach(b=>b.onclick=()=>cardAction(b.dataset.act,+b.dataset.i));
-  document.querySelectorAll('#camps .camp').forEach(el=>{ const open=()=>openCamp(+el.dataset.idx); el.onclick=ev=>{ if(ev.target.closest('button,select,input')) return; open(); }; el.onkeydown=ev=>{ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); open(); } }; });
+  document.querySelectorAll('#camps .camp').forEach(el=>{ const open=()=>openCamp(+el.dataset.idx); el.onclick=ev=>{ if(ev.target.closest('button,select,input,textarea,.editform')) return; open(); }; el.onkeydown=ev=>{ if((ev.key==='Enter'||ev.key===' ')&&!ev.target.closest('.editform,button,input,textarea,select')){ ev.preventDefault(); open(); } }; });
 }
 
 async function cardAction(act, i){
@@ -727,6 +779,26 @@ async function cardAction(act, i){
   const lang=CUR.meta.language||(cur==='Kč'?'cs':'en');
   const st=document.querySelector(`[data-status="${i}"]`);
   const form=document.querySelector(`[data-form="${i}"]`);
+  const editform=document.querySelector(`[data-editform="${i}"]`);
+  if(act==='edit'){ editform.style.display=editform.style.display==='none'?'grid':'none'; return; }
+  if(act==='canceledit'){ editform.style.display='none'; renderCampaigns(CUR); return; }
+  if(act==='save'){
+    const get=f=>editform.querySelector(`[data-e="${f}"]`).value.trim();
+    const edited={headline:get('headline'), body:get('body'), objective:get('objective'),
+                  channel:get('channel'), offer:get('offer'), rationale:get('rationale')};
+    if(!edited.headline){ const es=document.querySelector(`[data-editstatus="${i}"]`); es.textContent=t('need_headline'); return; }
+    const es=document.querySelector(`[data-editstatus="${i}"]`);
+    es.textContent=t('saving');
+    Object.assign(CUR.campaigns[i], edited);
+    try{
+      const r=await fetch('/api/update_card',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({index:i, fields:edited})});
+      const j=await r.json();
+      if(j.error){ es.textContent=t('save_failed')+' '+j.error; return; }
+    }catch(e){ es.textContent=t('save_failed')+' '+e; return; }
+    renderCampaigns(CUR);
+    return;
+  }
   if(act==='disc'){ form.style.display=form.style.display==='none'?'block':'none'; return; }
   if(act==='regen'){
     const get=f=>form.querySelector(`[data-f="${f}"]`).value;
@@ -863,6 +935,7 @@ function openCamp(idx){
     + `${esc(segName(cp.segment))}<span class="pri ${pri}" style="margin-left:4px">${esc(pri)}</span></div>`
     + `<div class="mhead">“${esc(cp.headline)}”</div>`
     + `<div class="mobj">${esc(cp.objective||'')}</div>`
+    + (cp.body?`<div class="sec">${t('m_body')}</div><div class="mbody">${esc(cp.body)}</div>`:'')
 
     + `<div class="sec">${t('m_campaign')}</div>`
     + row(t('m_channel'), esc(cp.channel))

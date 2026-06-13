@@ -31,6 +31,11 @@ def _clean(s: str) -> str:
 
 
 def _body(card: dict, lang: str, currency: str, signature: str) -> str:
+    # a manager-authored campaign text wins: it's used verbatim as the message,
+    # with only the signature appended if the text didn't already include it
+    manual = (card.get("body") or "").strip()
+    if manual:
+        return manual if signature and signature in manual else f"{manual}\n\n{signature}"
     greet = "Dobrý den," if lang == "cs" else "Hello,"
     lines = [greet, "", card.get("headline", "")]
     if card.get("offer") and card["offer"] != card.get("headline"):
