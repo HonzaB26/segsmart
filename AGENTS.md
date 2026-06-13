@@ -133,7 +133,8 @@ CI (`.github/workflows/ci.yml`) runs pytest on every push/PR. Keep it green.
 | `seg/features.py` → `seg/segment.py` | RFM + behavioral features → segments (rules + KMeans cross-check) |
 | `seg/seasonality.py`, `seg/campaigns.py` | monthly index; LLM campaign cards |
 | `seg/external.py` | owner-uploaded daily factors (FX/weather/promo) → revenue impact, scored against the persisted no-PII daily series (`/api/external_impact`) |
-| `seg/products.py` | product-mix cross-tab: segment × category → revenue + customers. Auto-derives categories via local LLM with heuristic fallback; passes through a `category` column when the source provides one. Stored as `product_mix` in `result.json`. |
+| `seg/products.py` | product-mix cross-tab: segment × category → revenue + customers. Categories come from `seg/catalog.py` first, else local LLM / heuristic, or a `category` column the source provides. Stored as `product_mix` in `result.json`. |
+| `seg/catalog.py` | product-id → `cat_1`/`cat_2` hierarchy from `data/product_catalog.csv`; unknown ids generated via local LLM (Ollama) and appended, heuristic fallback offline. |
 | `seg/config.py`, `seg/connectors.py` | local config file; SQL/BQ/Shoptet fetch |
 | `pipeline.py` | orchestration → `out/result.json` |
 | `server.py`, `index.html`, `setup.html` | stdlib HTTP; dashboard; data setup |

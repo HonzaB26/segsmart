@@ -46,10 +46,14 @@ on disk instead of an account.
    seg/external.py     owner-uploaded daily factors (FX/weather/promo) scored
                        against a persisted no-PII daily revenue series:
                        % lift for 0/1 flags, correlation for numeric factors
+   seg/catalog.py      product-catalog enrichment: maps product ids to a
+                       cat_1/cat_2 hierarchy from data/product_catalog.csv;
+                       unknown ids generated via local LLM (Ollama) + appended,
+                       heuristic fallback when no model. Feeds products.py.
    seg/products.py     product-mix cross-tab: segment × category → revenue +
-                       customer count per cell; auto-derives categories via
-                       local LLM (Ollama) with heuristic fallback, or passes
-                       through a 'category' column when the source provides one
+                       customer count per cell; categories come from the
+                       catalog first, else local LLM / heuristic, or a
+                       'category' column the source already provides
                   │
                   ▼            NARRATIVE
    seg/campaigns.py    local LLM (Ollama) drafts one campaign card per
@@ -216,6 +220,7 @@ renders once and leaves nothing on disk.
 | `/api/run_config` | POST | run from config (persisted) |
 | `/api/external_impact` | POST | score an uploaded daily factors CSV against the persisted daily revenue (no customer data read) |
 | `/api/refine_card` | POST | rewrite a card around an owner-set discount |
+| `/api/update_card` | POST | save a manager's text edits to a card (text fields only; estimate/segment/priority stay read-only) |
 | `/api/launch` | POST | approved card → mailing artifact (+ webhook) |
 
 Defence layers (sized for a data-handling tool on an SME machine):
