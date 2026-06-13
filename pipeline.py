@@ -268,10 +268,36 @@ def analyze(df, currency="£", use_llm=True, out="out/result.json",
             "avg_monetary": float(row["avg_monetary"]), "avg_order_value": float(row["avg_order_value"]),
         })
 
+    # prospects: "find more like my best" — non-members closest to the most
+    # valuable present segment (Champions if any, else top revenue share).
+    # Cosine-kNN on the same scaled features; see seg/lookalikes.py. No PII
+    # beyond the existing contact map.
+    try:
+        from seg.lookalikes import expand_segment
+        seed = ("Champions" if any(s["name"] == "Champions" for s in segments)
+                else max(segments, key=lambda s: s["rev_share_pct"])["name"]
+                if segments else None)
+        prospects = {"for_segment": seed, "items": []}
+        if seed:
+            for r in expand_segment(feat, seed, k=15).itertuples():
+                cid = str(r.customer_id)
+                prospects["items"].append({
+                    "id": cid, "current_segment": r.segment,
+                    "similarity": float(r.similarity),
+                    "recency": int(r.recency), "frequency": int(r.frequency),
+                    "monetary": round(float(r.monetary), 2),
+                    "email": contact["email"].get(cid, ""),
+                    "name": contact["name"].get(cid, ""),
+                })
+    except Exception as e:
+        print(f"  [prospects skipped: {e}]")
+        prospects = {"for_segment": None, "items": []}
+
     result = {
         "meta": meta,
         "kpis": kpis,
         "segments": segments,
+        "prospects": prospects,
         "seasonality": {
             "index": sidx.to_dict("records"),
             "curve": [{"month": r["month"], "revenue": round(float(r["revenue"]), 2),
