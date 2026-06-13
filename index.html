@@ -298,6 +298,7 @@ en:{
   need_value:'enter the discount value', need_code:'enter the code from your shop system',
   regenerating:'regenerating…', launching:'launching…',
   recipients:'recipients', with_email:'with e-mail', download:'download',
+  all_mailed:'Everyone here was already in a campaign you launched this session — nothing to send.',
   no_mailer_dl:'no mailer connected — download a file for any mailer:',
   confirm_launch:'⚠ This will go to {n} recipients ({d} with e-mail){hook}.',
   hook_live:' — your mailer webhook WILL be called', hook_file:' — saves a file, no mailer configured',
@@ -387,6 +388,7 @@ cs:{
   need_value:'zadejte výši slevy', need_code:'zadejte kód z vašeho e-shopu',
   regenerating:'přegenerovávám…', launching:'spouštím…',
   recipients:'příjemců', with_email:'s e-mailem', download:'stáhnout',
+  all_mailed:'Všichni z tohoto seznamu už byli v kampani, kterou jste teď spustili – není co odeslat.',
   no_mailer_dl:'mailer není připojen – stáhněte soubor pro libovolnou rozesílku:',
   confirm_launch:'⚠ Půjde {n} příjemcům ({d} s e-mailem){hook}.',
   hook_live:' – zavolá se váš mailer webhook', hook_file:' – jen uloží soubor, mailer není nastaven',
@@ -734,6 +736,7 @@ $('#extrun').onclick=async ()=>{
 
 // campaign cards: render + owner-discount workflow + launch
 let CUR=null;   // last rendered result (campaign/launch handlers need it)
+const MAILED=new Set();   // recipient ids already launched this session (de-dup across campaigns)
 
 // Build the default e-mail body exactly like seg/mailer.py _body(), so the
 // "Campaign text" editor is pre-filled with the message the customer would
@@ -869,6 +872,11 @@ async function cardAction(act, i){
       recipients=(CUR.customers||[]).filter(x=>x.segment===cp.segment)
         .map(x=>({id:x.id, email:x.email||'', name:x.name||''}));
     }
+    // de-dup across campaigns launched this session: a prospect can also sit in
+    // a segment card's audience (e.g. a Loyal lookalike of Champions). Whoever
+    // was mailed first wins; later launches skip them so nobody gets two e-mails.
+    recipients=recipients.filter(x=>!MAILED.has(x.id));
+    if(!recipients.length){ st.textContent=t('all_mailed'); return; }
     // step 1: ask the server for the EXACT e-mail and show it for review —
     // nothing is saved or delivered until the user confirms
     st.textContent=t('launching');
@@ -906,6 +914,7 @@ async function doLaunch(i, cp, recipients, lang, cur, st, box){
         body:JSON.stringify({card:cp, recipients, language:lang, currency:cur, confirm:true})});
       const j=await r.json();
       if(j.error){ st.textContent='error: '+j.error; return; }
+      recipients.forEach(x=>MAILED.add(x.id));   // they won't be re-mailed by a later campaign this session
       const mk=(text, blobText, fname, type)=>{
         const a=document.createElement('a');
         a.href=URL.createObjectURL(new Blob([blobText],{type}));
