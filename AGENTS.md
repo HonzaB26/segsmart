@@ -136,6 +136,7 @@ CI (`.github/workflows/ci.yml`) runs pytest on every push/PR. Keep it green.
 | `seg/config.py`, `seg/connectors.py` | local config file; SQL/BQ/Shoptet fetch |
 | `pipeline.py` | orchestration → `out/result.json` |
 | `server.py`, `index.html`, `setup.html` | stdlib HTTP; dashboard; data setup |
+| `ad.html` | standalone marketing one-pager (`/ad`); self-contained, EN-only, outside the app i18n contract (a Czech version is a separate file when needed) |
 | `gen/` | synthetic Czech e-shop data (templated, no LLM) |
 
 ## Style
