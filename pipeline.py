@@ -250,6 +250,14 @@ def analyze(df, currency="£", use_llm=True, out="out/result.json",
     cards = all_cards(prof, hook, use_llm=use_llm, currency=currency, lang=lang)
     kpis["ai_campaigns"] = len(cards)
 
+    # product mix: segment × category cross-tab (uses LLM only for categorisation)
+    try:
+        from seg.products import product_mix as _product_mix
+        product_mix_data = _product_mix(df, feat, use_llm=use_llm, lang=lang)
+    except Exception as e:
+        print(f"  [product mix skipped: {e}]")
+        product_mix_data = []
+
     segments = []
     for name, row in prof.iterrows():
         segments.append({
@@ -272,6 +280,7 @@ def analyze(df, currency="£", use_llm=True, out="out/result.json",
         },
         "campaigns": cards,
         "external": external,
+        "product_mix": product_mix_data,
         "validation": {
             "kmeans_silhouette": round(sil, 3) if sil is not None else None,
             "rfm_kmeans_ari": round(ari, 3),

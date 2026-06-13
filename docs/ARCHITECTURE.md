@@ -46,6 +46,10 @@ on disk instead of an account.
    seg/external.py     owner-uploaded daily factors (FX/weather/promo) scored
                        against a persisted no-PII daily revenue series:
                        % lift for 0/1 flags, correlation for numeric factors
+   seg/products.py     product-mix cross-tab: segment × category → revenue +
+                       customer count per cell; auto-derives categories via
+                       local LLM (Ollama) with heuristic fallback, or passes
+                       through a 'category' column when the source provides one
                   │
                   ▼            NARRATIVE
    seg/campaigns.py    local LLM (Ollama) drafts one campaign card per

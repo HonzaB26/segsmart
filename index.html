@@ -127,6 +127,11 @@
   .upload .lbl{font-size:12.5px;color:var(--mut);margin-bottom:8px}
   .upload .ctl{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
   #extStatus{font-size:12px;color:var(--amber);margin-top:8px}
+  .bub-seg-label{font-size:11.5px;fill:#a9a7d4;text-anchor:middle}
+  .bub-cat-label{font-size:11.5px;fill:#a9a7d4;text-anchor:end;dominant-baseline:middle}
+  .bub-gridline{stroke:var(--line);stroke-width:1;opacity:.5}
+  .bub-circle{transition:opacity .12s,r .12s;cursor:pointer}
+  .bub-circle:hover{opacity:1!important}
 </style>
 </head>
 <body>
@@ -168,14 +173,21 @@
       <h3><span data-i="h_campaigns">AI campaign suggestions</span> <span class="sub" id="llmtag"></span></h3>
       <div class="camps" id="camps"></div>
     </div>
-    <div class="card">
-      <h3><span data-i="h_season">Seasonality</span> <span class="sub" id="seasontag"></span></h3>
-      <div class="season" id="season"></div>
-      <div class="hint" id="seasonhint"></div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card">
+        <h3><span data-i="h_season">Seasonality</span> <span class="sub" id="seasontag"></span></h3>
+        <div class="season" id="season"></div>
+        <div class="hint" id="seasonhint"></div>
 
-      <h3 style="margin-top:20px" data-i="h_validation">Validation</h3>
-      <div class="valrow" id="validation"></div>
-      <div class="hint" id="ingest"></div>
+        <h3 style="margin-top:20px" data-i="h_validation">Validation</h3>
+        <div class="valrow" id="validation"></div>
+        <div class="hint" id="ingest"></div>
+      </div>
+      <div class="card" id="mixcard" style="display:none">
+        <h3 data-i="h_product_mix">Product mix — segments × categories</h3>
+        <div class="hint" data-i="pm_hint">Bubble size = revenue · colour = segment. Hover for detail.</div>
+        <div id="mixchart" style="margin-top:14px;overflow-x:auto"></div>
+      </div>
     </div>
   </div>
 
@@ -208,6 +220,10 @@
   <div class="foot"><span data-i="footer">SegSmart · MBA Project 2026 · runs fully offline · RFM + KMeans + on-device LLM</span>
     · <a href="/setup" style="color:#7c79b8" data-i="f_setup">data setup</a></div>
 </div>
+
+<div id="mixtip" style="position:fixed;display:none;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:9px 13px;font-size:12.5px;pointer-events:none;z-index:100;
+  max-width:220px;line-height:1.5"></div>
 
 <div class="modal" id="campModal" role="dialog" aria-modal="true" aria-labelledby="cmSeg">
   <div class="box" id="campBox">
@@ -295,6 +311,10 @@ en:{
   ext_lift:'lift', ext_corr:'corr',
   ext_strength:{strong:'strong', moderate:'moderate', weak:'weak'},
   reasons:{},
+  h_product_mix:'Product mix — segments × categories',
+  pm_hint:'Bubble size = revenue · colour = customers (dark → bright teal). Hover for detail.',
+  pm_no_data:'No product data — check that your source includes a product column.',
+  pm_rev:'Revenue', pm_custs:'Customers',
 },
 cs:{
   tagline:'segmentace zákazníků, která neopustí váš počítač',
@@ -374,6 +394,10 @@ cs:{
     'non-positive price':'nekladná cena','billing / shipping lines':'řádky platby / dopravy',
     'cancelled / returned / failed':'stornované / vrácené / nezaplacené',
     'missing customer / date / value':'chybí zákazník / datum / hodnota'},
+  h_product_mix:'Produktový mix – segmenty × kategorie',
+  pm_hint:'Velikost bubliny = tržby · barva = zákazníci (tmavý → jasný tyrkys). Najeďte myší pro detail.',
+  pm_no_data:'Žádná data o produktech – zkontrolujte, zda váš zdroj obsahuje sloupec produktu.',
+  pm_rev:'Tržby', pm_custs:'Zákazníků',
 },
 };
 let uiLang = new URLSearchParams(location.search).get('lang')
@@ -401,6 +425,92 @@ function applyLang(){
   document.documentElement.lang = uiLang;
   if(CUR) render(CUR); else if($('#meta').dataset.empty) $('#meta').innerHTML = t('empty');
   renderExternal(EXT, EXTLABEL);
+}
+
+
+// ---- Product mix: segment × category bubble chart ----
+function renderProductMix(data, segments) {
+  const card = $('#mixcard'), el = $('#mixchart'), tip = $('#mixtip');
+  if (!data || !data.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const segOrder = ['Champions','Loyal','At-risk','New','Dormant'];
+  const cats = [...new Set(data.map(d => d.category))].sort();
+  const segs = segOrder.filter(s => data.some(d => d.segment === s));
+  const maxCusts = Math.max(...data.map(d => d.customers), 1);
+  // colour encodes customer count: dark teal (few) → bright teal #2dd4bf (many)
+  const custColor = n => {
+    const t = n / maxCusts;
+    return `rgb(${Math.round(0x0f+(0x2d-0x0f)*t)},${Math.round(0x3d+(0xd4-0x3d)*t)},${Math.round(0x38+(0xbf-0x38)*t)})`;
+  };
+
+  const ML = 148, MT = 28, MR = 20, MB = 56;
+  const cellW = 110, cellH = 44;
+  const W = ML + segs.length * cellW + MR;
+  const H = MT + cats.length * cellH + MB;
+  const MAX_R = Math.min(cellW, cellH) / 2 - 4;
+
+  // revenue lookup and global max for radius scaling
+  const rev = {};
+  data.forEach(d => { rev[d.segment + '|' + d.category] = d; });
+  const maxRev = Math.max(...data.map(d => d.revenue), 1);
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="display:block;max-width:100%">`;
+
+  // grid lines
+  cats.forEach((_, j) => {
+    const y = MT + (j + 0.5) * cellH;
+    svg += `<line class="bub-gridline" x1="${ML}" y1="${y}" x2="${ML + segs.length * cellW}" y2="${y}"/>`;
+  });
+  segs.forEach((_, i) => {
+    const x = ML + (i + 0.5) * cellW;
+    svg += `<line class="bub-gridline" x1="${x}" y1="${MT}" x2="${x}" y2="${MT + cats.length * cellH}"/>`;
+  });
+
+  // category labels (Y axis)
+  cats.forEach((cat, j) => {
+    const y = MT + (j + 0.5) * cellH;
+    svg += `<text class="bub-cat-label" x="${ML - 8}" y="${y}">${esc(cat)}</text>`;
+  });
+
+  // segment labels (X axis)
+  segs.forEach((seg, i) => {
+    const x = ML + (i + 0.5) * cellW;
+    svg += `<text class="bub-seg-label" x="${x}" y="${H - MB + 18}">${esc(segName(seg))}</text>`;
+  });
+
+  // bubbles
+  segs.forEach((seg, i) => {
+    cats.forEach((cat, j) => {
+      const cell = rev[seg + '|' + cat];
+      if (!cell) return;
+      const x = ML + (i + 0.5) * cellW;
+      const y = MT + (j + 0.5) * cellH;
+      const r = Math.max(3, Math.sqrt(cell.revenue / maxRev) * MAX_R);
+      const color = custColor(cell.customers);
+      svg += `<circle class="bub-circle" cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity=".75"
+        data-seg="${esc(seg)}" data-cat="${esc(cat)}"
+        data-rev="${cell.revenue}" data-custs="${cell.customers}"/>`;
+    });
+  });
+
+  svg += '</svg>';
+  el.innerHTML = svg;
+
+  // hover tooltip
+  el.querySelectorAll('.bub-circle').forEach(c => {
+    c.addEventListener('mousemove', e => {
+      const seg = c.dataset.seg, cat = c.dataset.cat;
+      const currency = (CUR && CUR.meta.currency) || '£';
+      tip.innerHTML = `<b>${esc(segName(seg))}</b> · ${esc(cat)}<br>`
+        + `${t('pm_rev')}: <b>${fmtMoney(parseFloat(c.dataset.rev), currency)}</b><br>`
+        + `${t('pm_custs')}: <b>${fmtNum(c.dataset.custs)}</b>`;
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX + 14) + 'px';
+      tip.style.top  = (e.clientY - 10) + 'px';
+    });
+    c.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  });
 }
 
 
@@ -504,6 +614,8 @@ function render(r){
     [fmtDec(v.rfm_kmeans_ari), t('val_ari'), t('val_ari_s')],
     [fmtNum(v.n_customers), t('val_n'), t('val_n_s')],
   ].map(([b,l,s])=>`<div class="val"><b>${b}</b><small>${l}</small><small>${s}</small></div>`).join('');
+
+  renderProductMix(r.product_mix || [], r.segments);
 
 }
 

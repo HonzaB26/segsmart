@@ -24,6 +24,9 @@ CANON = ["customer_id", "order_id", "order_date",
 # optional contact passthrough — kept when the source maps them, so campaign
 # launch can produce directly-mailable recipient lists (email + name)
 CONTACT = ["customer_email", "customer_name"]
+# optional analytics passthrough — category is used by the product-mix chart;
+# when the source provides it directly, _finalize passes it through unchanged
+_PASSTHROUGH = CONTACT + ["category"]
 
 
 def _guess_dayfirst(txt: pd.Series) -> bool:
@@ -131,7 +134,7 @@ def _finalize(df: pd.DataFrame, drop_cancellations=True, drop_nonpositive=True) 
         df["country"] = ""
     df["product"] = df["product"].astype(str)
     df["country"] = df["country"].astype(str)
-    extra = [c for c in CONTACT if c in df.columns]
+    extra = [c for c in _PASSTHROUGH if c in df.columns]
     for c in extra:
         df[c] = df[c].astype(str).replace("nan", "")
     out = df[CANON + extra].reset_index(drop=True)
