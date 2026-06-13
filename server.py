@@ -88,6 +88,9 @@ class H(BaseHTTPRequestHandler):
         if path in ("/ad", "/ad.html"):
             with open(os.path.join(HERE, "ad.html"), "rb") as f:
                 return self._send(200, f.read(), "text/html; charset=utf-8")
+        if path in ("/system-card", "/system-card.html"):
+            with open(os.path.join(HERE, "system-card.html"), "rb") as f:
+                return self._send(200, f.read(), "text/html; charset=utf-8")
         if path in ("/ad-cs", "/ad.cs.html"):
             with open(os.path.join(HERE, "ad.cs.html"), "rb") as f:
                 return self._send(200, f.read(), "text/html; charset=utf-8")

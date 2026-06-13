@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SegSmart — System Card</title>
+<style>
+  :root{
+    --bg:#1e1b4b; --panel:#2a2660; --panel2:#322c75; --ink:#eef0ff;
+    --mut:#a9a7d4; --line:#403a86; --teal:#2dd4bf; --good:#34d399; --red:#f87171;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;color:var(--ink);font:15.5px/1.6 system-ui,Segoe UI,Roboto,sans-serif;
+       background:linear-gradient(160deg,#1a163f,#241f57)}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 22px 60px}
+  a{color:var(--teal);text-decoration:none}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:20px 0;border-bottom:1px solid var(--line)}
+  .logo{font-size:20px;font-weight:800} .logo span{color:var(--teal)}
+  .back{margin-left:auto;border:1px solid var(--line);border-radius:9px;padding:7px 14px;font-size:13px;font-weight:600;color:var(--ink)}
+  .back:hover{border-color:var(--teal);color:var(--teal)}
+  h1{font-size:30px;margin:34px 0 6px}
+  .lede{color:var(--mut);max-width:70ch}
+  h2{font-size:18px;margin:38px 0 12px;border-left:3px solid var(--teal);padding-left:10px}
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
+  th,td{text-align:left;vertical-align:top;padding:9px 11px;border-bottom:1px solid var(--line)}
+  th{color:var(--mut);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.5px}
+  td b{color:var(--ink)} .chose{color:var(--good);font-weight:700}
+  .num{font:13px ui-monospace,Consolas,monospace;color:#cfeee8}
+  ul{margin:8px 0 0;padding-left:20px} li{margin:5px 0;color:var(--mut)} li b{color:var(--ink)}
+  .meta{color:var(--mut);font-size:13px;margin-top:6px}
+  .note{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-top:14px;color:var(--mut);font-size:14px}
+  footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Seg<span>Smart</span></div>
+    <a class="back" href="/ad">← Back to overview</a>
+  </header>
+
+  <h1>System card</h1>
+  <p class="lede">What's inside, what we measured, and — the boring but honest part —
+     what we tested and <b>did not</b> choose. SegSmart is a local-first SME customer
+     segmentation + campaign tool; every decision below is biased toward staying
+     lightweight and keeping data on the owner's machine.</p>
+  <p class="meta">v0.1.0-alpha · revenue figures from UCI Online Retail (4,338 customers)
+     and a 20-month synthetic CZ eshop · all numbers reproducible from the repo.</p>
+
+  <h2>Decisions &amp; what we tested</h2>
+  <table>
+    <thead><tr><th>Area</th><th>Shipped choice</th><th>Also tested</th><th>Why not chosen</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>Segmentation</b></td>
+        <td class="chose">RFM quantile rules + KMeans cross-check</td>
+        <td>2D-attention encoder (SAINT-lite, self-supervised)</td>
+        <td>Its clusters were <i>worse</i> (<span class="num">silhouette 0.18 vs 0.25</span>) and it needs PyTorch. RFM is already a clean feature space — nothing left for a net to learn.</td>
+      </tr>
+      <tr>
+        <td><b>Lookalikes / prospects</b></td>
+        <td class="chose">Cosine k-NN on the scaled RFM features</td>
+        <td>Embeddings from the same attention encoder</td>
+        <td>Lookalike quality was <i>lower</i> (<span class="num">Champion-purity 0.74 vs 0.78</span>) for a large dependency. Plain geometry wins; runs in milliseconds.</td>
+      </tr>
+      <tr>
+        <td><b>Forecasting</b> <span class="meta">(not shipped yet)</span></td>
+        <td class="chose">ETS / Holt-Winters (statsmodels) if/when added</td>
+        <td>Chronos-Bolt zero-shot (time-series foundation model)</td>
+        <td>Result <i>split</i> by data: Chronos won on clean synthetic (<span class="num">MASE 0.694 vs 0.761</span>), ETS won on the real, spiky series (<span class="num">1.256 vs 1.430</span>). Chronos needs torch + transformers (which clashes with our research env) + a model download; ETS is milliseconds. Kept as a documented option for clean / never-seen-before series.</td>
+      </tr>
+      <tr>
+        <td><b>Campaign copy</b></td>
+        <td class="chose">Local LLM via Ollama (gemma fast / qwen quality)</td>
+        <td>gemma4:e4b · gemma4:26b · qwen3.6:35b · Nemotron-49B</td>
+        <td>26B too slow on CPU; Nemotron / a qwen-MoE build produced gibberish or errored on Czech. Impact numbers are <b>deterministic</b>, never written by the model.</td>
+      </tr>
+      <tr>
+        <td><b>Category enrichment</b></td>
+        <td class="chose">Catalog file → local LLM → heuristic fallback</td>
+        <td>LLM-only categorisation</td>
+        <td>Catalog-first is exact and offline-safe; the LLM only fills genuine gaps.</td>
+      </tr>
+      <tr>
+        <td><b>Ingestion</b></td>
+        <td class="chose">Encoding/delimiter sniffer + canonical loader</td>
+        <td>—</td>
+        <td>Swallows messy real exports (cp1250, semicolons, xlsx, missing columns) without a cloud parser.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Deliberately not in the product</h2>
+  <ul>
+    <li><b>Deep learning &amp; foundation models</b> — tested (attention for segments, Chronos for forecasts); they didn't beat simple methods enough to justify the weight at SME scale.</li>
+    <li><b>PyTorch / transformers as runtime deps</b> — they're heavy and version-fragile (the Chronos test alone forced a transformers downgrade). The product stays on pandas/sklearn/statsmodels.</li>
+    <li><b>Any cloud call</b> — no SaaS inference, no telemetry. The customer database never leaves the machine; that's the moat, not a limitation.</li>
+  </ul>
+
+  <h2>How it's validated</h2>
+  <ul>
+    <li><b>Segmentation quality</b>: KMeans silhouette + RFM↔KMeans agreement (adjusted Rand index), shown on the dashboard.</li>
+    <li><b>Honesty warnings</b>: the tool flags when the data can't support a conclusion (short window, too few customers, weak structure) instead of pretending.</li>
+    <li><b>Executable policies</b>: 198 automated tests, including a no-PII guard (hashed name denylist), a bilingual-UI contract, and a docs-sync rule — the rules are tests, not just prose.</li>
+  </ul>
+
+  <div class="note">Methodology note: the experiments above (attention encoder, forecasting bake-off)
+     live on dedicated branches in the repository, with the scripts that produce every number here.
+     We keep negative results on purpose.</div>
+
+  <footer>
+    SegSmart · runs fully offline · <a href="/ad">overview</a> ·
+    <a href="https://github.com/anicka-net/segsmart">source on GitHub ↗</a>
+  </footer>
+</div>
+</body>
+</html>
