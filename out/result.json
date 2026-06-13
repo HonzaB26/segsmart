@@ -81,6 +81,161 @@
       "avg_order_value": 675.3
     }
   ],
+  "prospects": {
+    "for_segment": "Champions",
+    "items": [
+      {
+        "id": "demo-0018",
+        "current_segment": "Loyal",
+        "similarity": 0.86,
+        "recency": 77,
+        "frequency": 26,
+        "monetary": 75332.49,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0017",
+        "current_segment": "Loyal",
+        "similarity": 0.848,
+        "recency": 81,
+        "frequency": 25,
+        "monetary": 78098.06,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0031",
+        "current_segment": "Loyal",
+        "similarity": 0.836,
+        "recency": 71,
+        "frequency": 24,
+        "monetary": 61667.03,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0039",
+        "current_segment": "Loyal",
+        "similarity": 0.824,
+        "recency": 58,
+        "frequency": 22,
+        "monetary": 56520.36,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0038",
+        "current_segment": "Loyal",
+        "similarity": 0.812,
+        "recency": 72,
+        "frequency": 21,
+        "monetary": 56735.66,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0050",
+        "current_segment": "Loyal",
+        "similarity": 0.8,
+        "recency": 69,
+        "frequency": 20,
+        "monetary": 44726.06,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0034",
+        "current_segment": "Loyal",
+        "similarity": 0.788,
+        "recency": 76,
+        "frequency": 19,
+        "monetary": 59329.61,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0042",
+        "current_segment": "Loyal",
+        "similarity": 0.776,
+        "recency": 129,
+        "frequency": 17,
+        "monetary": 51092.11,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0001",
+        "current_segment": "Loyal",
+        "similarity": 0.764,
+        "recency": 76,
+        "frequency": 16,
+        "monetary": 209548.22,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0009",
+        "current_segment": "Loyal",
+        "similarity": 0.752,
+        "recency": 77,
+        "frequency": 16,
+        "monetary": 128640.65,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0044",
+        "current_segment": "Loyal",
+        "similarity": 0.74,
+        "recency": 57,
+        "frequency": 15,
+        "monetary": 50755.11,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0055",
+        "current_segment": "Loyal",
+        "similarity": 0.728,
+        "recency": 82,
+        "frequency": 13,
+        "monetary": 41317.69,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0062",
+        "current_segment": "Loyal",
+        "similarity": 0.716,
+        "recency": 133,
+        "frequency": 11,
+        "monetary": 34719.84,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0090",
+        "current_segment": "Loyal",
+        "similarity": 0.704,
+        "recency": 79,
+        "frequency": 11,
+        "monetary": 14075.18,
+        "email": "",
+        "name": ""
+      },
+      {
+        "id": "demo-0099",
+        "current_segment": "Loyal",
+        "similarity": 0.692,
+        "recency": 135,
+        "frequency": 11,
+        "monetary": 12724.21,
+        "email": "",
+        "name": ""
+      }
+    ]
+  },
   "seasonality": {
     "index": [
       {

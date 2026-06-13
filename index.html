@@ -204,6 +204,12 @@
     </div>
   </div>
 
+  <div class="card" id="prospectcard" style="display:none;margin-top:16px">
+    <h3><span data-i="h_prospects">Grow your best segment</span> <span class="sub" id="prospecttag"></span></h3>
+    <div class="hint" data-i="prospects_hint">Customers most like your top segment but not in it yet — the “nudge them up” shortlist. Cosine nearest-neighbours on the same RFM features, computed on this machine.</div>
+    <div id="prospects" style="margin-top:12px;overflow-x:auto"></div>
+  </div>
+
   <div class="card" id="extcard" style="margin-top:16px">
     <h3><span data-i="h_external">External drivers</span> <span class="sub" id="exttag"></span></h3>
     <div class="hint" style="margin-bottom:10px" data-i="ext_hint">Upload a daily CSV to measure how your own external factors move revenue — ad spend, promo days, exchange rate, weather, competitor events, etc. The CSV needs a date column and at least one numeric or 0/1 factor column. Scored entirely on this machine against your daily revenue.</div>
@@ -332,6 +338,11 @@ en:{
   pm_hint:'Bubble size = revenue · colour = customers (dark → bright teal). Hover for detail.',
   pm_no_data:'No product data — check that your source includes a product column.',
   pm_rev:'Revenue', pm_custs:'Customers',
+  h_prospects:'Grow your best segment',
+  prospects_hint:'Customers most like your top segment but not in it yet — the “nudge them up” shortlist. Cosine nearest-neighbours on the same RFM features, computed on this machine.',
+  pr_for:'· more like your {s}',
+  pr_cust:'customer', pr_current:'current segment', pr_sim:'similarity',
+  pr_recency:'days since last order', pr_freq:'orders', pr_spend:'total spent',
 },
 cs:{
   tagline:'segmentace zákazníků, která neopustí váš počítač',
@@ -419,6 +430,11 @@ cs:{
   pm_hint:'Velikost bubliny = tržby · barva = zákazníci (tmavý → jasný tyrkys). Najeďte myší pro detail.',
   pm_no_data:'Žádná data o produktech – zkontrolujte, zda váš zdroj obsahuje sloupec produktu.',
   pm_rev:'Tržby', pm_custs:'Zákazníků',
+  h_prospects:'Rozšiřte svůj nejlepší segment',
+  prospects_hint:'Zákazníci nejpodobnější vašemu nejlepšímu segmentu, kteří v něm ještě nejsou – užší výběr „k posunutí výš“. Kosinová podobnost nad stejnými RFM znaky, spočítaná na tomto počítači.',
+  pr_for:'· podobní segmentu {s}',
+  pr_cust:'zákazník', pr_current:'současný segment', pr_sim:'podobnost',
+  pr_recency:'dní od poslední objednávky', pr_freq:'objednávky', pr_spend:'celkem utraceno',
 },
 };
 let uiLang = new URLSearchParams(location.search).get('lang')
@@ -637,7 +653,26 @@ function render(r){
   ].map(([b,l,s])=>`<div class="val"><b>${b}</b><small>${l}</small><small>${s}</small></div>`).join('');
 
   renderProductMix(r.product_mix || [], r.segments);
+  renderProspects(r);
 
+}
+
+// prospects: non-members closest to the top segment ("find more like my best")
+function renderProspects(r){
+  const p = r.prospects || {}, items = p.items || [], card = $('#prospectcard');
+  if(!p.for_segment || !items.length){ card.style.display='none'; return; }
+  card.style.display='';
+  $('#prospecttag').textContent = tf('pr_for', {s:segName(p.for_segment)});
+  const c = r.meta.currency || '£';
+  const head = `<table><thead><tr><th>${t('pr_cust')}</th><th>${t('pr_current')}</th>`
+    + `<th>${t('pr_sim')}</th><th>${t('pr_recency')}</th><th>${t('pr_freq')}</th>`
+    + `<th>${t('pr_spend')}</th></tr></thead><tbody>`;
+  const rows = items.map(x=>`<tr><td>${esc(x.id)}</td>`
+    + `<td>${esc(segName(x.current_segment))}</td>`
+    + `<td>${fmtDec(x.similarity*100)} %</td>`
+    + `<td>${fmtNum(x.recency)}</td><td>${fmtNum(x.frequency)}</td>`
+    + `<td>${fmtMoney(x.monetary,c)}</td></tr>`).join('');
+  $('#prospects').innerHTML = head + rows + '</tbody></table>';
 }
 
 // external drivers: score owner-uploaded daily factors against revenue
