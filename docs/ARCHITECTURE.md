@@ -203,7 +203,7 @@ renders once and leaves nothing on disk.
 | route | method | role |
 |---|---|---|
 | `/`, `/setup` | GET | the two app pages |
-| `/ad` | GET | standalone marketing one-pager (`ad.html`, self-contained, EN) |
+| `/ad`, `/ad-cs` | GET | standalone marketing one-pager (`ad.html` / `ad.cs.html`, self-contained, EN + CS) |
 | `/api/result` | GET | cached result JSON |
 | `/api/config` | GET/POST | read / write the config file |
 | `/api/infer_mapping` | POST | uploaded bytes → proposed mapping |

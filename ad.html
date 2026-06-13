@@ -48,6 +48,17 @@
             font:13.5px/1.7 ui-monospace,Consolas,monospace;color:#cfeee8}
   .terminal .c{color:var(--mut)} .terminal .g{color:var(--good)}
 
+  /* hero topology diagram */
+  .diagram{margin:38px auto 4px;max-width:660px}
+  .diagram svg{width:100%;height:auto;display:block}
+  .diagram .cap{color:var(--mut);font-size:14px;text-align:center;margin-top:10px}
+  .diagram .cap b{color:var(--ink)}
+  .flowline{stroke-dasharray:6 7;animation:dash 1.5s linear infinite}
+  @keyframes dash{to{stroke-dashoffset:-26}}
+  @media(prefers-reduced-motion:reduce){.flowline{animation:none}}
+  .langlink{border:1px solid var(--line);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:700}
+  .langlink:hover{border-color:var(--teal)}
+
   /* the overnight proof strip */
   .strip{margin:38px 0;background:linear-gradient(120deg,rgba(167,139,250,.10),rgba(45,212,191,.08));
          border:1px solid var(--line);border-left:4px solid var(--purple);border-radius:14px;
@@ -119,6 +130,7 @@
   <header>
     <div class="logo">Seg<span>Smart</span></div>
     <span class="badge">🔒 Runs on your machine</span>
+    <a class="langlink" href="/ad-cs" hreflang="cs">🌐 Česky</a>
     <a class="ghhdr" href="https://github.com/anicka-net/segsmart">GitHub ↗</a>
   </header>
 
@@ -139,6 +151,72 @@
       $ docker compose up<br>
       <span class="g">✓ dashboard ready · 5 segments · 5 campaigns · nothing left the machine</span>
     </div>
+  </div>
+
+  <!-- TOPOLOGY: data + AI stay in one box, yours -->
+  <div class="diagram">
+    <svg viewBox="0 0 720 280" role="img"
+         aria-label="Your customers and the local AI both run inside your machine. Data never crosses to the cloud.">
+      <!-- the cloud, outside and faded -->
+      <g opacity="0.85">
+        <g fill="#241f57" stroke="#6b67a8" stroke-width="2" stroke-dasharray="5 5">
+          <circle cx="576" cy="74" r="22"/>
+          <circle cx="606" cy="60" r="28"/>
+          <circle cx="638" cy="74" r="20"/>
+          <rect x="558" y="74" width="92" height="20" rx="10"/>
+        </g>
+        <text x="606" y="124" text-anchor="middle" fill="#8e8bc6" font-size="13"
+              font-family="system-ui" font-weight="700" letter-spacing="1">THE CLOUD</text>
+      </g>
+
+      <!-- your machine -->
+      <rect x="30" y="60" width="448" height="190" rx="20" fill="rgba(45,212,191,0.05)"
+            stroke="#2dd4bf" stroke-width="2"/>
+      <text x="54" y="90" fill="#2dd4bf" font-size="13" font-family="system-ui"
+            font-weight="800" letter-spacing="1.5">YOUR MACHINE</text>
+
+      <!-- customers (database cylinder) -->
+      <g>
+        <ellipse cx="140" cy="158" rx="38" ry="13" fill="#a78bfa"/>
+        <rect x="102" y="158" width="76" height="48" fill="#8b73e0"/>
+        <ellipse cx="140" cy="206" rx="38" ry="13" fill="#8b73e0"/>
+        <ellipse cx="140" cy="158" rx="38" ry="13" fill="#a78bfa"/>
+        <text x="140" y="236" text-anchor="middle" fill="#a9a7d4" font-size="13"
+              font-family="system-ui">your customers</text>
+      </g>
+
+      <!-- local AI (chip) -->
+      <g>
+        <g stroke="#2dd4bf" stroke-width="3">
+          <line x1="332" y1="150" x2="332" y2="142"/><line x1="360" y1="150" x2="360" y2="142"/>
+          <line x1="388" y1="150" x2="388" y2="142"/>
+          <line x1="332" y1="212" x2="332" y2="220"/><line x1="360" y1="212" x2="360" y2="220"/>
+          <line x1="388" y1="212" x2="388" y2="220"/>
+        </g>
+        <rect x="320" y="150" width="80" height="62" rx="11" fill="#10342f" stroke="#2dd4bf" stroke-width="2"/>
+        <text x="360" y="188" text-anchor="middle" fill="#2dd4bf" font-size="20"
+              font-family="system-ui" font-weight="800">AI</text>
+        <text x="360" y="236" text-anchor="middle" fill="#a9a7d4" font-size="13"
+              font-family="system-ui">local AI</text>
+      </g>
+
+      <!-- the work happens inside: customers <-> AI -->
+      <text x="250" y="150" text-anchor="middle" fill="#7c79b8" font-size="11.5"
+            font-family="system-ui">segments · campaigns</text>
+      <line class="flowline" x1="182" y1="178" x2="316" y2="178" stroke="#2dd4bf" stroke-width="2.5"/>
+      <polygon points="316,178 306,173 306,183" fill="#2dd4bf"/>
+      <polygon points="182,178 192,173 192,183" fill="#2dd4bf"/>
+
+      <!-- the boundary: nothing crosses -->
+      <line x1="556" y1="98" x2="496" y2="116" stroke="#8e8bc6" stroke-width="2" stroke-dasharray="2 5"/>
+      <circle cx="478" cy="120" r="17" fill="#241f57" stroke="#f87171" stroke-width="3"/>
+      <line x1="467" y1="131" x2="489" y2="109" stroke="#f87171" stroke-width="3"/>
+      <text x="600" y="170" text-anchor="middle" fill="#f3a0a0" font-size="12.5"
+            font-family="system-ui" font-weight="600">your data
+        <tspan x="600" dy="16">never crosses</tspan></text>
+    </svg>
+    <div class="cap">Your customers and the AI live in the same box — <b>yours</b>.
+      The analysis comes to the data; the data never goes to the cloud.</div>
   </div>
 
   <!-- OVERNIGHT PROOF (structural, no names) -->
@@ -230,6 +308,38 @@
         <h4>Speaks your customers' language</h4>
         <p>Bilingual CZ/EN, correct Czech down to the genitive.</p>
         <span class="adv">→ Generated on-device — even the words stay home.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTEROPERABILITY -->
+  <section>
+    <div class="kicker">No walled garden</div>
+    <h2>Local doesn't mean isolated.</h2>
+    <p class="lead">SegSmart reads from the systems you already run and hands its
+      results to whatever you send mail with — in open formats, through integration
+      points you own. There's nothing proprietary to be locked into, and no export fee
+      to leave.</p>
+    <div class="vs">
+      <div class="col">
+        <h3>Reads from</h3>
+        <div class="who">your existing data, in place</div>
+        <ul>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>CSV / TSV / Excel exports — any encoding, any delimiter, missing columns and all</span></li>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>MySQL · MariaDB · PostgreSQL · SQLite — read-only, never a write</span></li>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>Google BigQuery</span></li>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>Shoptet API — and the same pattern fits WooCommerce, PrestaShop, Magento</span></li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>Hands off to</h3>
+        <div class="who">your mailer, your way</div>
+        <ul>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>An import-ready recipient file (e-mail + name) any ESP accepts</span></li>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>A webhook to n8n / Zapier / your own script</span></li>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>Plain JSON + CSV — no proprietary format, no lock-in</span></li>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>No mailer at all? Download the file and send it yourself</span></li>
+        </ul>
       </div>
     </div>
   </section>
