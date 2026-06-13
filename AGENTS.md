@@ -53,6 +53,17 @@ change must preserve that.
     `tests/test_no_pii.py` enforces this (hashed name denylist, e-mail and
     birth-number patterns, never-tracked private paths). If it fires, scrub the
     content; to denylist a new name, add its SHA-256 — never the name itself.
+11. **The UI is bilingual — shipping English-only breaks the Czech demo, so
+    it breaks the build.** Every user-facing string in `index.html` /
+    `setup.html` is wired to a translation key that exists in BOTH the `en`
+    and `cs` `UI` dicts: static chrome via `data-i`, dynamic strings via
+    `t()`/`tf()`, numbers via `fmtNum`/`fmtDec`, months/segment names via the
+    display-only helpers. Hardcode visible English, or add a key to one dict
+    and forget the other, and `tests/test_i18n.py` fails (key parity +
+    data-i resolution + an unwired-chrome scan). The 🌐 toggle must re-render
+    whatever you add — remember rendered state (see `CUR`, `EXT` in
+    `index.html`) so a language switch repaints it live. Czech prose: n-dash
+    (–), never m-dash; no kalky.
 
 ## Commands
 
@@ -96,7 +107,8 @@ CI (`.github/workflows/ci.yml`) runs pytest on every push/PR. Keep it green.
 - **Two language knobs, never merge them**: UI chrome language = client-side
   toggle (each page's `UI` dict, localStorage `seg_ui_lang`); content language
   (cards, warnings) = `output.language` per run, in `result.meta.language`.
-  New UI strings go into BOTH `en` and `cs` dicts in the same commit.
+  Wiring new UI strings into both dicts is hard rule #11 (enforced by
+  `tests/test_i18n.py`) — this bullet is just the *why two dicts exist*.
 - **File sources from the HTTP API are confined to `data/`**
   (`seg/config.py::fetch_raw trusted_paths`) — never relax this; it's what
   stops `/api/preview_source` from reading arbitrary local files.

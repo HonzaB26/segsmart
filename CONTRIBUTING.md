@@ -45,6 +45,10 @@ the whole point of the seam.
   lazily so the core image stays slim.
 - No real customer data in the repo — ever. Use `gen/` to synthesize.
 - Keep the dashboard dependency-free (single-file SVG, works offline).
+- The UI is bilingual (EN/CS). Any user-facing string you add must be wired to
+  a key in **both** the `en` and `cs` dicts (`data-i` for static text,
+  `t()`/`tf()` for dynamic) — `tests/test_i18n.py` enforces it. See AGENTS.md
+  rule #11.
 
 ## PRs
 

@@ -75,14 +75,14 @@
         <tbody id="u_maprows"></tbody></table>
       <div class="controls" style="margin-top:12px">
         <label class="cur"><span data-i="l_currency">Currency</span> <input type="text" id="u_currency"></label>
-        <label class="cur">Decimal <select id="u_decimal"><option value=".">.</option><option value=",">,</option></select></label>
+        <label class="cur"><span data-i="l_decimal">Decimal</span> <select id="u_decimal"><option value=".">.</option><option value=",">,</option></select></label>
         <label class="cur"><span data-i="l_camplang">Campaign language</span> <select id="u_lang"><option value="en">en</option><option value="cs">cs</option><option value="de">de</option></select></label>
         <label class="cur"><input type="checkbox" id="u_llm" checked> <span data-i="l_ai">AI campaign copy</span></label>
         <label class="cur"><input type="checkbox" id="u_remember" checked> <span data-i="l_remember">remember as my data source</span></label>
         <button id="u_run" data-i="b_run">Run with this mapping ▸</button>
         <span class="status" id="u_run_status"></span>
       </div>
-      <div class="hint">“Remember” stores the file under <code>data/uploads/</code> and writes the
+      <div class="hint" data-i="hint_remember">“Remember” stores the file under <code>data/uploads/</code> and writes the
         config below, so the dashboard can refresh from it any time. Untick for a one-off look —
         then nothing is written to disk.</div>
     </div>
@@ -92,28 +92,28 @@
   <div class="card">
     <h3><span class="num">2</span><span data-i="h_db">Or connect a database</span></h3>
     <div class="hint" data-i="hint_db">Read-only SELECT against your shop database. Use <code>${ENV_VAR}</code> for passwords/tokens — expanded from the environment at run time, never stored in the file.</div>
-    <label class="f">Type
+    <label class="f"><span data-i="l_conn_type">Type</span>
       <select id="c_type">
         <option value="sql">SQL — MySQL / MariaDB / PostgreSQL / SQLite (Shoptet, WooCommerce, PrestaShop, Magento…)</option>
         <option value="bigquery">Google BigQuery</option>
         <option value="shoptet">Shoptet API</option>
       </select></label>
     <div id="f_sql">
-      <label class="f">Connection URL
+      <label class="f"><span data-i="l_conn_url">Connection URL</span>
         <input type="text" id="c_url" placeholder="mysql+pymysql://user:${DB_PASSWORD}@host:3306/eshop"></label>
-      <label class="f">Query (order lines: customer, date, qty, price / total…)
+      <label class="f"><span data-i="l_sql_query">Query (order lines: customer, date, qty, price / total…)</span>
         <textarea id="c_query" rows="3" placeholder="SELECT email, order_no, created_at, qty, unit_price FROM order_lines"></textarea></label>
     </div>
     <div id="f_bigquery" style="display:none">
-      <label class="f">Project <input type="text" id="c_project" placeholder="my-gcp-project"></label>
-      <label class="f">Service-account JSON path (optional — else GOOGLE_APPLICATION_CREDENTIALS)
+      <label class="f"><span data-i="l_project">Project</span> <input type="text" id="c_project" placeholder="my-gcp-project"></label>
+      <label class="f"><span data-i="l_sa_path">Service-account JSON path (optional — else GOOGLE_APPLICATION_CREDENTIALS)</span>
         <input type="text" id="c_creds" placeholder="config/service-account.json"></label>
-      <label class="f">Query
+      <label class="f"><span data-i="l_bq_query">Query</span>
         <textarea id="c_bq_query" rows="3" placeholder="SELECT * FROM `project.dataset.order_lines`"></textarea></label>
     </div>
     <div id="f_shoptet" style="display:none">
-      <label class="f">API base URL <input type="text" id="c_base" placeholder="https://eshop.myshoptet.com/action/ApiOrders/"></label>
-      <label class="f">API token <input type="text" id="c_token" placeholder="${SHOPTET_TOKEN}"></label>
+      <label class="f"><span data-i="l_api_base">API base URL</span> <input type="text" id="c_base" placeholder="https://eshop.myshoptet.com/action/ApiOrders/"></label>
+      <label class="f"><span data-i="l_api_token">API token</span> <input type="text" id="c_token" placeholder="${SHOPTET_TOKEN}"></label>
     </div>
     <div class="controls">
       <button id="c_test" data-i="b_test">Test &amp; preview ▸</button>
@@ -126,7 +126,7 @@
         <tbody id="c_maprows"></tbody></table>
       <div class="controls" style="margin-top:12px">
         <label class="cur"><span data-i="l_currency">Currency</span> <input type="text" id="c_currency"></label>
-        <label class="cur">Decimal <select id="c_decimal"><option value=".">.</option><option value=",">,</option></select></label>
+        <label class="cur"><span data-i="l_decimal">Decimal</span> <select id="c_decimal"><option value=".">.</option><option value=",">,</option></select></label>
         <label class="cur"><span data-i="l_camplang">Campaign language</span> <select id="c_lang"><option value="en">en</option><option value="cs">cs</option><option value="de">de</option></select></label>
         <label class="cur"><input type="checkbox" id="c_llm" checked> <span data-i="l_ai">AI campaign copy</span></label>
         <button id="c_save" data-i="b_saverun">Save &amp; run ▸</button>
@@ -138,8 +138,7 @@
   <!-- ============ 3 · the config file ============ -->
   <div class="card">
     <h3><span class="num">3</span><span data-i="h_cfg">Configuration file</span></h3>
-    <div class="hint">Everything above is saved to <code id="cfg_path">config/segsmart.json</code> —
-      plain JSON, also editable by hand (re-read on every run, no restart needed).</div>
+    <div class="hint"><span data-i="hint_cfg_a">Everything above is saved to</span> <code id="cfg_path">config/segsmart.json</code> <span data-i="hint_cfg_b">— plain JSON, also editable by hand (re-read on every run, no restart needed).</span></div>
     <label class="f"><span data-i="l_signature">E-mail signature (who signs campaign mailings)</span>
       <input type="text" id="cfg_sig" placeholder="Tým Drogerie U Lípy"></label>
     <div class="hint" data-i="hint_signature">Appended to every launched mailing. Stored as <code>output.signature</code> in the config below; the launch preview shows it.</div>
@@ -175,6 +174,14 @@ en:{
   b_runcfg:'Run from config ▸',
   l_camplang:'Campaign language', l_currency:'Currency', l_ai:'AI campaign copy',
   l_remember:'remember as my data source',
+  l_decimal:'Decimal', l_conn_type:'Type', l_conn_url:'Connection URL',
+  l_sql_query:'Query (order lines: customer, date, qty, price / total…)',
+  l_project:'Project',
+  l_sa_path:'Service-account JSON path (optional — else GOOGLE_APPLICATION_CREDENTIALS)',
+  l_bq_query:'Query', l_api_base:'API base URL', l_api_token:'API token',
+  hint_remember:'“Remember” stores the file under <code>data/uploads/</code> and writes the config below, so the dashboard can refresh from it any time. Untick for a one-off look — then nothing is written to disk.',
+  hint_cfg_a:'Everything above is saved to',
+  hint_cfg_b:'— plain JSON, also editable by hand (re-read on every run, no restart needed).',
   th_our:'Our field', th_their:'Your column', none:'— none —',
   pick_file:'pick a file first (CSV, TSV or Excel)', analyzing:'analyzing locally…',
   detected_by:'detected by {s} — please confirm ↓',
@@ -208,6 +215,14 @@ cs:{
   b_runcfg:'Spustit z konfigurace ▸',
   l_camplang:'Jazyk kampaní', l_currency:'Měna', l_ai:'AI texty kampaní',
   l_remember:'zapamatovat jako můj zdroj dat',
+  l_decimal:'Desetinný oddělovač', l_conn_type:'Typ', l_conn_url:'Připojovací URL',
+  l_sql_query:'Dotaz (řádky objednávek: zákazník, datum, množství, cena / celkem…)',
+  l_project:'Projekt',
+  l_sa_path:'Cesta k JSON service-accountu (volitelné – jinak GOOGLE_APPLICATION_CREDENTIALS)',
+  l_bq_query:'Dotaz', l_api_base:'Základní URL API', l_api_token:'Token API',
+  hint_remember:'„Zapamatovat“ uloží soubor do <code>data/uploads/</code> a zapíše konfiguraci níže, takže přehled z něj může kdykoli aktualizovat. Odškrtněte pro jednorázové nahlédnutí – pak se na disk nic nezapíše.',
+  hint_cfg_a:'Vše výše uvedené se ukládá do',
+  hint_cfg_b:'– prostý JSON, lze upravovat i ručně (načítá se při každém běhu, není potřeba restart).',
   th_our:'Naše pole', th_their:'Váš sloupec', none:'— žádný —',
   pick_file:'nejdřív vyberte soubor (CSV, TSV nebo Excel)', analyzing:'analyzuji lokálně…',
   detected_by:'rozpoznáno pomocí {s} – zkontrolujte níže ↓',
