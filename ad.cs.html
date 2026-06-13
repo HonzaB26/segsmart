@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SegSmart – jediná AI na vaší straně je ta, kterou provozujete sami</title>
+<style>
+  :root{
+    --bg:#1e1b4b; --panel:#2a2660; --panel2:#322c75; --ink:#eef0ff;
+    --mut:#a9a7d4; --line:#403a86;
+    --teal:#2dd4bf; --purple:#a78bfa; --amber:#f59e0b; --lime:#84cc16; --red:#f87171;
+    --good:#34d399;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;color:var(--ink);font:16px/1.6 system-ui,Segoe UI,Roboto,sans-serif;
+       -webkit-font-smoothing:antialiased;
+       background:
+         radial-gradient(900px 500px at 80% -10%,rgba(45,212,191,.10),transparent 60%),
+         radial-gradient(800px 600px at 0% 0%,rgba(167,139,250,.10),transparent 55%),
+         linear-gradient(160deg,#1a163f,#241f57)}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+  a{color:var(--teal);text-decoration:none}
+
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:20px 0}
+  .logo{font-size:22px;font-weight:800;letter-spacing:.3px}
+  .logo span{color:var(--teal)}
+  .badge{margin-left:auto;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.4);
+         color:var(--good);padding:6px 12px;border-radius:999px;font-size:12.5px;font-weight:600}
+  .ghhdr{border:1px solid var(--line);border-radius:9px;padding:7px 14px;font-size:13px;
+         font-weight:600;color:var(--ink)}
+  .ghhdr:hover{border-color:var(--teal);color:var(--teal)}
+
+  .hero{padding:56px 0 30px;text-align:center}
+  .eyebrow{display:inline-block;font-size:12.5px;letter-spacing:1.4px;text-transform:uppercase;
+           color:var(--teal);font-weight:700;margin-bottom:18px}
+  h1{font-size:clamp(28px,5vw,52px);line-height:1.1;font-weight:800;margin:0 auto;max-width:17ch}
+  h1 .hl{color:var(--teal)}
+  .sub{color:var(--mut);font-size:clamp(16px,2.2vw,19px);max-width:62ch;margin:22px auto 0}
+  .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:30px}
+  .btn{background:var(--teal);color:#06281f;border:0;padding:13px 24px;border-radius:11px;
+       font-weight:800;font-size:15px;cursor:pointer;display:inline-block}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:700}
+  .btn:hover{transform:translateY(-1px)}
+  .terminal{max-width:580px;margin:30px auto 0;background:#15123a;border:1px solid var(--line);
+            border-radius:12px;padding:14px 18px;text-align:left;
+            font:13.5px/1.7 ui-monospace,Consolas,monospace;color:#cfeee8}
+  .terminal .c{color:var(--mut)} .terminal .g{color:var(--good)}
+
+  .diagram{margin:38px auto 4px;max-width:660px}
+  .diagram svg{width:100%;height:auto;display:block}
+  .diagram .cap{color:var(--mut);font-size:14px;text-align:center;margin-top:10px}
+  .diagram .cap b{color:var(--ink)}
+  .flowline{stroke-dasharray:6 7;animation:dash 1.5s linear infinite}
+  @keyframes dash{to{stroke-dashoffset:-26}}
+  @media(prefers-reduced-motion:reduce){.flowline{animation:none}}
+  .langlink{border:1px solid var(--line);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:700}
+  .langlink:hover{border-color:var(--teal)}
+
+  .strip{margin:38px 0;background:linear-gradient(120deg,rgba(167,139,250,.10),rgba(45,212,191,.08));
+         border:1px solid var(--line);border-left:4px solid var(--purple);border-radius:14px;
+         padding:22px 26px;font-size:clamp(17px,2.4vw,21px);font-weight:600;line-height:1.45}
+  .strip b{color:var(--teal)}
+
+  section{padding:34px 0}
+  .kicker{font-size:12.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--purple);
+          font-weight:700;margin-bottom:10px}
+  h2{font-size:clamp(23px,3.4vw,32px);font-weight:800;margin:0 0 6px;line-height:1.15}
+  .lead{color:var(--mut);max-width:66ch;margin:0 0 22px}
+
+  .vs{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .col{border:1px solid var(--line);border-radius:16px;padding:20px 22px;background:var(--panel)}
+  .col.them{border-style:dashed;opacity:.92}
+  .col.you{border-color:rgba(45,212,191,.5);background:
+           linear-gradient(180deg,rgba(45,212,191,.07),transparent),var(--panel)}
+  .col h3{margin:0 0 4px;font-size:15px;font-weight:800}
+  .col .who{font-size:12.5px;color:var(--mut);margin-bottom:14px}
+  .col.you .who{color:var(--good)}
+  .col ul{list-style:none;margin:0;padding:0}
+  .col li{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+  .col li:first-child{border-top:0}
+  .mark{flex:none;width:18px;font-weight:800}
+  .them .mark{color:var(--red)} .you .mark{color:var(--good)}
+
+  blockquote{margin:0;border:1px solid var(--line);border-left:4px solid var(--amber);
+             border-radius:14px;padding:22px 26px;background:var(--panel);font-size:18px;line-height:1.5}
+  blockquote .by{display:block;margin-top:12px;color:var(--mut);font-size:13.5px;font-weight:600}
+
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .feat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
+  .feat .ic{font-size:22px}
+  .feat h4{margin:12px 0 6px;font-size:16px;font-weight:800}
+  .feat p{margin:0;color:var(--mut);font-size:14px}
+  .feat .adv{display:block;margin-top:10px;color:var(--teal);font-size:13px;font-weight:600}
+
+  .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;counter-reset:s}
+  .step{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .step::before{counter-increment:s;content:counter(s);display:inline-flex;align-items:center;
+    justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--teal);
+    color:#06281f;font-weight:800;font-size:14px;margin-bottom:10px}
+  .step h4{margin:0 0 4px;font-size:14.5px} .step p{margin:0;color:var(--mut);font-size:13px}
+
+  .close{text-align:center;border:1px solid var(--line);border-radius:18px;padding:40px 26px;margin:14px 0;
+         background:radial-gradient(700px 300px at 50% 0%,rgba(45,212,191,.08),transparent 70%),var(--panel)}
+  .close h2{max-width:26ch;margin:0 auto 10px}
+  .close .lead{margin:0 auto 24px}
+  .coda{color:#8e8bc6;font-size:13.5px;font-style:italic;max-width:64ch;margin:24px auto 0;line-height:1.6}
+
+  footer{border-top:1px solid var(--line);padding:22px 0 34px;color:#7c79b8;font-size:12.5px;
+         display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  footer .grow{margin-left:auto}
+  .offline{color:var(--good)}
+
+  @media(max-width:760px){
+    .vs,.grid,.flow{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">Seg<span>Smart</span></div>
+    <span class="badge">🔒 Běží na vašem počítači</span>
+    <a class="langlink" href="/ad" hreflang="en">🌐 English</a>
+    <a class="ghhdr" href="https://github.com/anicka-net/segsmart">GitHub ↗</a>
+  </header>
+
+  <!-- HERO -->
+  <div class="hero">
+    <span class="eyebrow">Zákaznická analytika pro malé e-shopy, která běží u vás – ne v cloudu</span>
+    <h1>Jediná AI <span class="hl">na vaší straně</span> je ta, kterou provozujete sami.</h1>
+    <p class="sub">SegSmart rozdělí vaše zákazníky do segmentů a ke každému připraví
+      kampaň – pomocí lokální AI, která běží celá na vašem počítači. Váš seznam
+      zákazníků nikdy neopustí firmu. Model, který s ním pracuje, se zodpovídá vám,
+      protože nemá komu jinému.</p>
+    <div class="cta">
+      <a class="btn" href="https://github.com/anicka-net/segsmart">Spusťte si ho sami</a>
+      <a class="btn ghost" href="#how">Jak to funguje</a>
+    </div>
+    <div class="terminal">
+      <span class="c"># vaše data i vaše AI, na železe, které už máte</span><br>
+      $ docker compose up<br>
+      <span class="g">✓ přehled připraven · 5 segmentů · 5 kampaní · nic neopustilo počítač</span>
+    </div>
+  </div>
+
+  <!-- TOPOLOGIE: data i AI v jedné krabici, té vaší -->
+  <div class="diagram">
+    <svg viewBox="0 0 720 280" role="img"
+         aria-label="Vaši zákazníci i lokální AI běží na vašem počítači. Data nikdy neodejdou do cloudu.">
+      <g opacity="0.85">
+        <g fill="#241f57" stroke="#6b67a8" stroke-width="2" stroke-dasharray="5 5">
+          <circle cx="576" cy="74" r="22"/>
+          <circle cx="606" cy="60" r="28"/>
+          <circle cx="638" cy="74" r="20"/>
+          <rect x="558" y="74" width="92" height="20" rx="10"/>
+        </g>
+        <text x="606" y="124" text-anchor="middle" fill="#8e8bc6" font-size="12.5"
+              font-family="system-ui" font-weight="700" letter-spacing="1">CIZÍ CLOUD</text>
+      </g>
+
+      <rect x="30" y="60" width="448" height="190" rx="20" fill="rgba(45,212,191,0.05)"
+            stroke="#2dd4bf" stroke-width="2"/>
+      <text x="54" y="90" fill="#2dd4bf" font-size="13" font-family="system-ui"
+            font-weight="800" letter-spacing="1.5">VÁŠ POČÍTAČ</text>
+
+      <g>
+        <ellipse cx="140" cy="158" rx="38" ry="13" fill="#a78bfa"/>
+        <rect x="102" y="158" width="76" height="48" fill="#8b73e0"/>
+        <ellipse cx="140" cy="206" rx="38" ry="13" fill="#8b73e0"/>
+        <ellipse cx="140" cy="158" rx="38" ry="13" fill="#a78bfa"/>
+        <text x="140" y="236" text-anchor="middle" fill="#a9a7d4" font-size="13"
+              font-family="system-ui">vaši zákazníci</text>
+      </g>
+
+      <g>
+        <g stroke="#2dd4bf" stroke-width="3">
+          <line x1="332" y1="150" x2="332" y2="142"/><line x1="360" y1="150" x2="360" y2="142"/>
+          <line x1="388" y1="150" x2="388" y2="142"/>
+          <line x1="332" y1="212" x2="332" y2="220"/><line x1="360" y1="212" x2="360" y2="220"/>
+          <line x1="388" y1="212" x2="388" y2="220"/>
+        </g>
+        <rect x="320" y="150" width="80" height="62" rx="11" fill="#10342f" stroke="#2dd4bf" stroke-width="2"/>
+        <text x="360" y="188" text-anchor="middle" fill="#2dd4bf" font-size="20"
+              font-family="system-ui" font-weight="800">AI</text>
+        <text x="360" y="236" text-anchor="middle" fill="#a9a7d4" font-size="13"
+              font-family="system-ui">lokální AI</text>
+      </g>
+
+      <text x="250" y="150" text-anchor="middle" fill="#7c79b8" font-size="11.5"
+            font-family="system-ui">segmenty · kampaně</text>
+      <line class="flowline" x1="182" y1="178" x2="316" y2="178" stroke="#2dd4bf" stroke-width="2.5"/>
+      <polygon points="316,178 306,173 306,183" fill="#2dd4bf"/>
+      <polygon points="182,178 192,173 192,183" fill="#2dd4bf"/>
+
+      <line x1="556" y1="98" x2="496" y2="116" stroke="#8e8bc6" stroke-width="2" stroke-dasharray="2 5"/>
+      <circle cx="478" cy="120" r="17" fill="#241f57" stroke="#f87171" stroke-width="3"/>
+      <line x1="467" y1="131" x2="489" y2="109" stroke="#f87171" stroke-width="3"/>
+      <text x="600" y="170" text-anchor="middle" fill="#f3a0a0" font-size="12.5"
+            font-family="system-ui" font-weight="600">vaše data
+        <tspan x="600" dy="16">nikdy neodejdou</tspan></text>
+    </svg>
+    <div class="cap">Vaši zákazníci i AI jsou ve stejné krabici – <b>té vaší</b>.
+      Analýza přichází za daty; data nikdy neodcházejí do cloudu.</div>
+  </div>
+
+  <!-- DŮKAZ PŘES NOC (strukturálně, bez jmen) -->
+  <div class="strip">
+    Cloudovou AI lze <b>ze dne na den</b> zdražit, omezit nebo úplně stáhnout –
+    ať už rozhodnutím dodavatele, nebo státu, který nakreslí novou čáru na mapě.
+    Model na <b>vašem</b> serveru se nezodpovídá ani jednomu. Dělá dnes přesně to,
+    co včera, protože je váš.
+  </div>
+
+  <!-- NA VAŠÍ STRANĚ -->
+  <section>
+    <div class="kicker">Proč „na vaší straně“ není jen slogan</div>
+    <h2>Na čí straně vaše AI vlastně stojí?</h2>
+    <p class="lead">Nástroj, který si pronajímáte z cloudu, slouží hlavně zájmům
+      svého dodavatele. Nástroj, který provozujete sami, nemá druhého pána.</p>
+    <div class="vs">
+      <div class="col them">
+        <h3>Cloudové segmentační nástroje</h3>
+        <div class="who">zodpovídají se svému dodavateli</div>
+        <ul>
+          <li><span class="mark">✗</span><span>Váš seznam zákazníků <b>je</b> jejich produkt – nahrajete ho do jejich cloudu</span></li>
+          <li><span class="mark">✗</span><span>Pojistky, které nevidíte, nezkontrolujete a nezměníte</span></li>
+          <li><span class="mark">✗</span><span>Model vám můžou vyměnit, přiškrtit nebo zrušit pod rukama</span></li>
+          <li><span class="mark">✗</span><span>Jejich dostupnost, jejich ceník, jejich plán, jejich výpadek</span></li>
+          <li><span class="mark">✗</span><span>Předplatné, které platíte, ať ho využíváte, nebo ne</span></li>
+        </ul>
+      </div>
+      <div class="col you">
+        <h3>SegSmart</h3>
+        <div class="who">zodpovídá se vám</div>
+        <ul>
+          <li><span class="mark">✓</span><span>Seznam nikdy neopustí firmu – není třetí strana, u které by mohl uniknout</span></li>
+          <li><span class="mark">✓</span><span>Pojistky jsou v kódu, který si můžete přečíst a změnit</span></li>
+          <li><span class="mark">✓</span><span>Model si uzamknete na konkrétní verzi a necháte – nikdo vám ho neodebere</span></li>
+          <li><span class="mark">✓</span><span>Váš počítač, vaše síť, vaše kontrola – i bez internetu</span></li>
+          <li><span class="mark">✓</span><span>Zaplatíte jednou; aktualizace si stáhnete, až budete chtít</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- DŮKAZ -->
+  <section>
+    <blockquote>
+      Lokální model si jednou zkusil vymyslet slevový kód, který by žádný obchod
+      neuznal. Zachytili jsme to – ve <b>vlastním kódu</b>, testem, který zastaví
+      vydání. To u cizí černé skříňky neuděláte. A přesně o to jde.
+      <span class="by">– co v praxi znamená „pojistky máte ve svých rukou“</span>
+    </blockquote>
+  </section>
+
+  <!-- FUNKCE JAKO VÝHODY -->
+  <section>
+    <div class="kicker">Co dostanete – a proč na tom záleží</div>
+    <h2>Funkce podle jediného měřítka, na kterém záleží: podle vás.</h2>
+    <div class="grid">
+      <div class="feat">
+        <div class="ic">🔒</div>
+        <h4>Data nikdy neopustí počítač</h4>
+        <p>Segmentace i texty od AI běží lokálně.</p>
+        <span class="adv">→ GDPR díky architektuře – žádný přenos, žádná zpracovatelská smlouva, není co vynést.</span>
+      </div>
+      <div class="feat">
+        <div class="ic">🧭</div>
+        <h4>Pojistky máte ve svých rukou</h4>
+        <p>AI píše texty; slevy ani kódy si nevymýšlí.</p>
+        <span class="adv">→ Skutečnou nabídku přidáte vy. Obchod zůstává v rukou člověka.</span>
+      </div>
+      <div class="feat">
+        <div class="ic">📊</div>
+        <h4>Dva algoritmy, vzájemná kontrola</h4>
+        <p>Pojmenované segmenty podle RFM (kdy naposledy, jak často a za kolik zákazníci nakupují) plus kontrola algoritmem KMeans, tedy shlukováním podobných zákazníků.</p>
+        <span class="adv">→ Srozumitelné skupiny, se kterými se dá pracovat – ne nálepka z černé skříňky.</span>
+      </div>
+      <div class="feat">
+        <div class="ic">🛟</div>
+        <h4>Poctivost od základu</h4>
+        <p>Upozorní, když data na spolehlivý závěr nestačí.</p>
+        <span class="adv">→ Nástroj na vaší straně, ne na straně dodavatelova ceníku.</span>
+      </div>
+      <div class="feat">
+        <div class="ic">📡</div>
+        <h4>Funguje i bez internetu</h4>
+        <p>Nenačítá nic zvenčí, neposílá žádnou telemetrii, nevolá domů – z principu.</p>
+        <span class="adv">→ Spadne internet a nic se nezmění.</span>
+      </div>
+      <div class="feat">
+        <div class="ic">🌐</div>
+        <h4>Mluví jazykem vašich zákazníků</h4>
+        <p>Dvojjazyčně CZ/EN, správná čeština až po skloňování.</p>
+        <span class="adv">→ Generováno přímo na zařízení – doma zůstanou i slova.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTEROPERABILITA -->
+  <section>
+    <div class="kicker">Žádná uzavřená zahrada</div>
+    <h2>Lokální neznamená izolované.</h2>
+    <p class="lead">SegSmart čte ze systémů, které už používáte, a výsledky předá
+      tomu, čím rozesíláte e-maily – v otevřených formátech a přes propojení, která
+      máte pod kontrolou. Není do čeho vás zamknout a za odchod se neplatí.</p>
+    <div class="vs">
+      <div class="col">
+        <h3>Čte z</h3>
+        <div class="who">vašich dat tam, kde už jsou</div>
+        <ul>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>Exporty CSV / TSV / Excel – libovolné kódování, libovolný oddělovač, klidně i chybějící sloupce</span></li>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>MySQL · MariaDB · PostgreSQL · SQLite – jen pro čtení, nikdy nezapisuje</span></li>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>Google BigQuery</span></li>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>Shoptet API – a stejný postup sedí na WooCommerce, PrestaShop i Magento</span></li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>Předá</h3>
+        <div class="who">vašemu nástroji na rozesílku, po vašem</div>
+        <ul>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>Soubor příjemců připravený k importu (e-mail + jméno), který přijme každý nástroj pro rozesílání e-mailů</span></li>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>Webhook, tedy automatické zavolání vámi určeného rozhraní, do n8n / Zapieru / vlastního skriptu</span></li>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>Prostý JSON a CSV – žádný proprietární formát, žádné uzamčení u dodavatele</span></li>
+          <li><span class="mark" style="color:var(--teal)">→</span><span>Nemáte nástroj na rozesílání e-mailů? Stáhněte si soubor a pošlete ho sami</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- POSTUP -->
+  <section id="how">
+    <div class="kicker">Od surového exportu k odeslané kampani</div>
+    <h2>Za jeden večer, na železe, které už máte.</h2>
+    <p class="lead">Přidejte cokoli, co aspoň vzdáleně připomíná prodejní data –
+      jakékoli kódování, jakýkoli oddělovač, klidně i chybějící sloupce. Lokální
+      model navrhne mapování sloupců; vy ho potvrdíte.</p>
+    <div class="flow">
+      <div class="step"><h4>Přineste data</h4><p>CSV, Excel nebo připojení k databázi (jen pro čtení). Nic se nikam nenahrává.</p></div>
+      <div class="step"><h4>Uvidíte své zákazníky</h4><p>Pět pojmenovaných segmentů, Paretovo rozdělení (menšina zákazníků = většina tržeb), sezónní vrchol.</p></div>
+      <div class="step"><h4>Schvalte kampaň</h4><p>Ke každému segmentu jedna karta od AI. Přidejte skutečnou slevu; text se přizpůsobí.</p></div>
+      <div class="step"><h4>Spusťte</h4><p>Zkontrolujte přesné znění e-mailu, potvrďte – a dostanete soubor, který přijme libovolný nástroj pro rozesílání.</p></div>
+    </div>
+  </section>
+
+  <!-- ZÁVĚR -->
+  <div class="close">
+    <div class="kicker">Teď poctivě</div>
+    <h2>Nejcennější, co e-shop má, je jeho seznam zákazníků.</h2>
+    <p class="lead">Obchodní model každého jiného nástroje začíná tím, že si z něj
+      udělá kopii. Náš tím, že se ho ani nedotkne.</p>
+    <a class="btn" href="https://github.com/anicka-net/segsmart">Spusťte si SegSmart sami</a>
+    <p class="coda">AI nezabila software – jen z něj udělala méně vzácné zboží.
+      To, co zůstává, není samotný kód, ale důvěra, provoz, vztah a data, která se
+      nikam nehnou. Postavili jsme to nejobhajitelnější, co zbylo – tím, že jsme
+      zbytek rozdali.</p>
+  </div>
+
+  <footer>
+    <span>SegSmart · lokální zákaznická segmentace · MIT</span>
+    <span class="grow offline">⚡ Tato stránka nenačetla nic zvenčí – jako celý zbytek produktu.</span>
+  </footer>
+
+</div>
+</body>
+</html>
