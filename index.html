@@ -205,9 +205,12 @@
   </div>
 
   <div class="card" id="prospectcard" style="display:none;margin-top:16px">
-    <h3><span data-i="h_prospects">Grow your best segment</span> <span class="sub" id="prospecttag"></span></h3>
-    <div class="hint" data-i="prospects_hint">Customers who shop like your best segment but aren’t in it yet — a ready shortlist to win over. Worked out privately on this machine.</div>
-    <div id="prospects" style="margin-top:12px;overflow-x:auto"></div>
+    <h3 id="prospecthdr" onclick="toggleProspects()" style="cursor:pointer;user-select:none">
+      <span id="prospectcaret" style="display:inline-block;width:1em">▸</span><span data-i="h_prospects">Grow your best segment</span> <span class="sub" id="prospecttag"></span></h3>
+    <div id="prospectbody" style="display:none">
+      <div class="hint" data-i="prospects_hint">Customers who shop like your best segment but aren’t in it yet — a ready shortlist to win over. Worked out privately on this machine.</div>
+      <div id="prospects" style="margin-top:12px;overflow-x:auto"></div>
+    </div>
   </div>
 
   <div class="card" id="extcard" style="margin-top:16px">
@@ -677,6 +680,13 @@ function renderProspects(r){
     + `<td>${fmtNum(x.recency)}</td><td>${fmtNum(x.frequency)}</td>`
     + `<td>${fmtMoney(x.monetary,c)}</td></tr>`).join('');
   $('#prospects').innerHTML = head + rows + '</tbody></table>';
+}
+
+// collapsed by default; the header arrow expands the shortlist
+function toggleProspects(){
+  const b=$('#prospectbody'), open=b.style.display!=='none';
+  b.style.display=open?'none':'';
+  $('#prospectcaret').textContent=open?'▸':'▾';
 }
 
 // external drivers: score owner-uploaded daily factors against revenue
