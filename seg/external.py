@@ -64,7 +64,12 @@ def load_external_csv(path_or_text: str, date_col: str | None = None,
              if any(k in c.lower() for k in ("date", "datum", "day", "den"))),
             raw.columns[0],
         )
-    out = pd.DataFrame({"date": pd.to_datetime(raw[date_col], errors="coerce")})
+    # numeric date columns (e.g. 20260101 as an int) would be read by pandas as
+    # epoch nanoseconds → all of 1970; stringify first so YYYYMMDD parses as a date
+    dcol = raw[date_col]
+    if pd.api.types.is_numeric_dtype(dcol):
+        dcol = dcol.map(lambda v: "" if pd.isna(v) else str(int(v)))
+    out = pd.DataFrame({"date": pd.to_datetime(dcol, errors="coerce")})
     out = out.dropna(subset=["date"])
     out["date"] = out["date"].dt.normalize()
     for c in raw.columns:
@@ -91,7 +96,6 @@ def factor_impact(daily: pd.DataFrame, min_days: int = 30) -> list[dict]:
     if len(daily) < min_days:
         return []
     rev = daily["revenue"].astype(float)
-    base = float(rev.mean())
     out = []
     for col in daily.columns:
         if col in _SKIP:
@@ -103,15 +107,19 @@ def factor_impact(daily: pd.DataFrame, min_days: int = 30) -> list[dict]:
         if uniq <= {0, 1} and len(uniq) == 2:          # binary flag → lift
             on = rev[vals == 1]
             off = rev[vals == 0]
-            if len(on) < 3 or len(off) < 3 or base == 0:
+            avg_on, avg_off = float(on.mean()), float(off.mean())
+            # lift is measured against the OFF-day baseline ("promo days earn
+            # X% more than non-promo days"), not the overall mean — the latter
+            # blends the on-days back into the denominator and understates it
+            if len(on) < 3 or len(off) < 3 or avg_off == 0:
                 continue
-            lift = (float(on.mean()) - float(off.mean())) / base * 100
+            lift = (avg_on - avg_off) / avg_off * 100
             out.append({
                 "factor": col, "type": "flag",
                 "effect_pct": round(lift, 1),
                 "on_days": int(len(on)),
-                "avg_on": round(float(on.mean()), 2),
-                "avg_off": round(float(off.mean()), 2),
+                "avg_on": round(avg_on, 2),
+                "avg_off": round(avg_off, 2),
                 "direction": "raises" if lift >= 0 else "lowers",
             })
         else:                                           # numeric → correlation

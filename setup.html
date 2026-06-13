@@ -57,7 +57,7 @@
     <div class="sub" data-i="sub">data setup</div>
     <div class="badge" data-i="badge">🔒 Data stays on this machine</div>
     <a class="nav" href="/" data-i="nav_dash">← Dashboard</a>
-    <a class="nav" href="#" id="langtoggle" title="UI language">🌐 CZ</a>
+    <a class="nav" href="#" id="langtoggle" data-i-title="t_uilang" title="UI language">🌐 CZ</a>
   </header>
 
   <!-- ============ 1 · upload a file ============ -->
@@ -151,7 +151,7 @@
     </div>
   </div>
 
-  <div class="foot">SegSmart · MBA Project 2026 · runs fully offline · <a href="/" style="color:#7c79b8">dashboard</a></div>
+  <div class="foot"><span data-i="footer">SegSmart · MBA Project 2026 · runs fully offline</span> · <a href="/" style="color:#7c79b8" data-i="f_dash">dashboard</a></div>
 </div>
 
 <script>
@@ -164,6 +164,8 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g,
 const UI = {
 en:{
   sub:'data setup', badge:'🔒 Data stays on this machine', nav_dash:'← Dashboard',
+  t_uilang:'UI language',
+  footer:'SegSmart · MBA Project 2026 · runs fully offline', f_dash:'dashboard',
   h_upload:'Upload a file',
   hint_upload:'CSV, TSV or Excel — column names in any language, any encoding, any delimiter. A local model proposes how it maps to our format; you confirm. Nothing leaves this machine.',
   b_analyze:'Analyze my file ▸', b_run:'Run with this mapping ▸',
@@ -205,6 +207,8 @@ en:{
 },
 cs:{
   sub:'nastavení dat', badge:'🔒 Data zůstávají na tomto počítači', nav_dash:'← Přehled',
+  t_uilang:'Jazyk rozhraní',
+  footer:'SegSmart · MBA projekt 2026 · běží zcela offline', f_dash:'přehled',
   h_upload:'Nahrát soubor',
   hint_upload:'CSV, TSV nebo Excel – názvy sloupců v libovolném jazyce, kódování i s libovolným oddělovačem. Lokální model navrhne mapování na náš formát; vy ho potvrdíte. Nic neopouští tento počítač.',
   b_analyze:'Analyzovat soubor ▸', b_run:'Spustit s tímto mapováním ▸',
@@ -254,6 +258,8 @@ const tf = (k, vars) => Object.entries(vars).reduce(
   (s,[a,b])=>s.replaceAll('{'+a+'}', b), t(k));
 function applyLang(){
   document.querySelectorAll('[data-i]').forEach(el=>{ el.innerHTML=t(el.dataset.i); });
+  document.querySelectorAll('[data-i-title]').forEach(el=>{ el.title = t(el.dataset.iTitle); });
+  document.querySelectorAll('[data-i-aria-label]').forEach(el=>{ el.setAttribute('aria-label', t(el.dataset.iAriaLabel)); });
   $('#langtoggle').textContent = uiLang==='cs' ? '🌐 EN' : '🌐 CZ';
   document.documentElement.lang = uiLang;
 }

@@ -102,3 +102,28 @@ def test_daily_sales_aggregates_to_day(eshop_df):
     assert "orders" in ds.columns
     assert len(ds) <= len(eshop_df)         # at most one row per day
     assert (ds["revenue"] > 0).all()
+
+
+def test_flag_lift_uses_off_day_baseline():
+    # 15 promo days at 200, 15 non-promo at 100. "Lift" is vs the OFF baseline:
+    # (200-100)/100 = +100%, NOT divided by the overall mean 150 (which gives 67%).
+    dates = pd.date_range("2026-01-01", periods=30)
+    daily = pd.DataFrame({
+        "date": dates,
+        "revenue": [200.0] * 15 + [100.0] * 15,
+        "promo": [1] * 15 + [0] * 15,
+    })
+    flag = next(f for f in factor_impact(daily) if f["factor"] == "promo")
+    assert flag["type"] == "flag"
+    assert flag["avg_on"] == 200.0 and flag["avg_off"] == 100.0
+    assert flag["effect_pct"] == 100.0
+    assert flag["direction"] == "raises"
+
+
+def test_numeric_yyyymmdd_dates_parse_to_real_year():
+    # a date column of YYYYMMDD integers must parse as 2026, not epoch-ns 1970
+    text = "date,promo\n" + "\n".join(
+        f"2026{m:02d}01,{m % 2}" for m in range(1, 13))
+    frame = load_external_csv(text, is_text=True)
+    assert not frame.empty
+    assert int(frame["date"].dt.year.min()) == 2026

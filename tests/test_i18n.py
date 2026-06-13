@@ -21,12 +21,23 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGES = ["index.html", "setup.html"]
 
 # tags that carry user-facing chrome and must be translated
-CHROME_TAGS = ("button", "h1", "h2", "h3", "label", "th")
+CHROME_TAGS = ("button", "h1", "h2", "h3", "label", "th", "a")
+# user-visible attributes (tooltips, screen-reader labels) — also must translate
+ATTR_KEYS = ("title", "aria-label", "alt")
 
 
 def _read(page):
     with open(os.path.join(HERE, page), encoding="utf-8") as f:
         return f.read()
+
+
+def _markup(src):
+    """Just the static HTML, not the <script> block. The JS holds dict values
+    that themselves contain markup (e.g. an <a> inside the `empty` message) and
+    template literals that build chrome dynamically via t()/tf() — scanning
+    those as if they were page markup gives false positives. Static chrome that
+    needs `data-i` all lives before the first <script>."""
+    return src.split("<script", 1)[0]
 
 
 def _dict_keys(src, lang):
@@ -115,7 +126,7 @@ def test_no_unwired_chrome_strings(page):
     This is the check that catches the real regression: a contributor adding
     `<button>Score factors</button>` with no translation at all.
     """
-    src = _read(page)
+    src = _markup(_read(page))
     offenders = []
     elements = [(tag, rf"<{tag}\b([^>]*)>(.*?)</{tag}>") for tag in CHROME_TAGS]
     # hint/help copy lives in <div class="hint"> — user-visible, must translate
@@ -131,4 +142,32 @@ def test_no_unwired_chrome_strings(page):
     assert not offenders, (
         f"{page}: user-visible chrome not wired for translation "
         f"(add data-i + a key in both dicts):\n  " + "\n  ".join(offenders)
+    )
+
+
+@pytest.mark.parametrize("page", PAGES)
+def test_user_visible_attributes_translated(page):
+    """`title` / `aria-label` / `alt` show up as tooltips and to screen readers,
+    so they need translating too — via `data-i-<attr>` (applyLang sets them from
+    a key). A hardcoded `title="UI language"` is just as English-only as a
+    hardcoded button label.
+    """
+    src = _markup(_read(page))
+    offenders = []
+    for tag_m in re.finditer(r"<[a-zA-Z][^>]*>", src):
+        tag = tag_m.group(0)
+        for attr in ATTR_KEYS:
+            am = re.search(rf'(?<![\w-]){attr}="([^"]*)"', tag)
+            if not am:
+                continue
+            val = am.group(1)
+            if "${" in val or not re.search(r"[A-Za-z]{3,}", val):
+                continue
+            if f"data-i-{attr}=" in tag:    # wired: applyLang sets it from a key
+                continue
+            name = tag.split(None, 1)[0][1:]
+            offenders.append(f"<{name} {attr}={val[:40]!r}>")
+    assert not offenders, (
+        f"{page}: hardcoded user-visible attributes (wire via data-i-<attr> + a "
+        f"key in both dicts):\n  " + "\n  ".join(offenders)
     )

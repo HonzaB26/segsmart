@@ -262,6 +262,19 @@ def test_invented_discount_currency_first():
     assert not has_invented_discount({"offer": "VIP přístup k novinkám a dárek"})
 
 
+def test_invented_discount_trailing_symbol():
+    # symbol currencies AFTER the amount ('50€', '25 $', '50£') — the \b after a
+    # symbol never matches, so an earlier regex let these through (review round 3)
+    from seg.campaigns import has_invented_discount
+    assert has_invented_discount({"offer": "Get 50€ off your next order"})
+    assert has_invented_discount({"headline": "25 $ back for you"})
+    assert has_invented_discount({"offer": "Sleva 50£ na vše"})
+    # word currencies after the amount still caught
+    assert has_invented_discount({"offer": "Sleva 100 Kč na nákup"})
+    # and innocuous copy still passes
+    assert not has_invented_discount({"offer": "Exkluzivní novinky a dárek navíc"})
+
+
 # --- someone signs the e-mail --------------------------------------------------
 
 def test_signature_default_per_language():
@@ -282,3 +295,20 @@ def test_signature_blank_falls_back_to_default():
     m = build_mailing(CARD, [{"id": "a@x.cz"}], lang="cs", currency="Kč",
                       signature="   ")
     assert m["body_text"].rstrip().endswith("Váš tým")
+
+
+def test_build_mailing_strips_crlf_from_recipients():
+    # a name/e-mail carrying a newline could inject SMTP/CSV headers downstream
+    m = build_mailing(
+        {"segment": "Champions", "headline": "Hi"},
+        [{"id": "c1", "email": "a@x.com\r\nBcc: evil@x.com", "name": "Eve\nNova"}],
+        lang="en")
+    r = m["recipients"][0]
+    assert "\r" not in r["email"] and "\n" not in r["email"]
+    assert "\r" not in r["name"] and "\n" not in r["name"]
+
+
+def test_deliver_rejects_non_http_scheme():
+    res = deliver({"subject": "x"}, {"webhook_url": "file:///etc/passwd"})
+    assert res["delivered"] is False
+    assert "http" in res.get("error", "").lower()

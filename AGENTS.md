@@ -56,11 +56,13 @@ change must preserve that.
 11. **The UI is bilingual — shipping English-only breaks the Czech demo, so
     it breaks the build.** Every user-facing string in `index.html` /
     `setup.html` is wired to a translation key that exists in BOTH the `en`
-    and `cs` `UI` dicts: static chrome via `data-i`, dynamic strings via
-    `t()`/`tf()`, numbers via `fmtNum`/`fmtDec`, months/segment names via the
-    display-only helpers. Hardcode visible English, or add a key to one dict
-    and forget the other, and `tests/test_i18n.py` fails (key parity +
-    data-i resolution + an unwired-chrome scan). The 🌐 toggle must re-render
+    and `cs` `UI` dicts: static chrome via `data-i`, user-visible attributes
+    (`title` / `aria-label` / `alt`) via `data-i-<attr>` (applyLang sets them),
+    dynamic strings via `t()`/`tf()`, numbers via `fmtNum`/`fmtDec`,
+    months/segment names via the display-only helpers. Hardcode visible
+    English, or add a key to one dict and forget the other, and
+    `tests/test_i18n.py` fails (key parity + data-i resolution + unwired-chrome
+    scan over tags/hints/attributes). The 🌐 toggle must re-render
     whatever you add — remember rendered state (see `CUR`, `EXT` in
     `index.html`) so a language switch repaints it live. Czech prose: n-dash
     (–), never m-dash; no kalky.
@@ -103,7 +105,11 @@ CI (`.github/workflows/ci.yml`) runs pytest on every push/PR. Keep it green.
   Czech-lettered codes and promise percentages nobody approved. Prompts forbid
   both; `strip_voucher_codes` scrubs codes; `has_invented_discount` demotes a
   card promising concrete values to rule-based fallback copy. Real discounts
-  enter only via `apply_discount` (owner input, validated).
+  enter only via `apply_discount` (owner input, validated). The
+  `_INVENTED_DISCOUNT` regex covers `%`, currency-first (`€50`), word currency
+  after the amount (`100 Kč`) and symbol-after-the-amount (`50€`) — symbols are
+  non-word chars so a trailing `\b` silently misses them; that gap shipped
+  twice, keep the symbol branch.
 - **Two language knobs, never merge them**: UI chrome language = client-side
   toggle (each page's `UI` dict, localStorage `seg_ui_lang`); content language
   (cards, warnings) = `output.language` per run, in `result.meta.language`.

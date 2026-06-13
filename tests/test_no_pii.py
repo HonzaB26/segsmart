@@ -82,14 +82,22 @@ def test_no_birth_numbers():
 
 
 def test_demo_result_is_anonymized():
-    """The tracked demo result ships per-customer rows — they must be the
-    anonymized demo-NNNN ids, never e-mail-shaped, even though synthetic."""
+    """The tracked demo result ships per-customer rows — ids must be anonymized
+    (never e-mail-shaped) and the contact fields must be empty. A run on a real
+    shop fills `email`/`name` with customer PII; persisting that into the tracked
+    demo file would leak it, so this test is the tripwire that catches it before
+    a commit (it reads the on-disk file, which a real run overwrites)."""
     res = (REPO / "out/result.json")
     if not res.exists():
         return
     data = json.loads(res.read_text(encoding="utf-8"))
     for c in data.get("customers", []):
         assert not EMAIL.search(c["id"]), f"email-shaped id in demo: {c['id']}"
+        email = c.get("email", "")
+        assert email == "" or FAKE_DOMAIN.search(email), \
+            f"real-looking customer e-mail in tracked demo: {email}"
+        assert not c.get("name"), \
+            f"customer name in tracked demo result (real-shop PII?): {c.get('name')!r}"
 
 
 def test_private_artifacts_not_tracked():

@@ -23,6 +23,13 @@ MAILINGS_DIR = "out/mailings"
 DEFAULT_SIGNATURE = {"cs": "Váš tým", "en": "Your team"}
 
 
+def _clean(s: str) -> str:
+    """Strip CR/LF (and surrounding space) from a recipient field — a name or
+    e-mail carrying a newline could inject SMTP/CSV headers in whatever mailer
+    consumes the artifact. Real names and addresses never contain them."""
+    return s.replace("\r", " ").replace("\n", " ").strip()
+
+
 def _body(card: dict, lang: str, currency: str, signature: str) -> str:
     greet = "Dobrý den," if lang == "cs" else "Hello,"
     lines = [greet, "", card.get("headline", "")]
@@ -44,14 +51,14 @@ def build_mailing(card: dict, recipients: list, lang="en", currency="£",
     mailer can consume directly (recipients carry e-mail + name, not just ids)."""
     rows = []
     for r in recipients:
-        cid = str(r.get("id") or r.get("customer_id") or "")
+        cid = _clean(str(r.get("id") or r.get("customer_id") or ""))
         if not cid:
             continue
-        email = str(r.get("email") or "")
+        email = _clean(str(r.get("email") or ""))
         if not email and "@" in cid:               # the id IS the e-mail
             email = cid
         rows.append({"customer_id": cid, "email": email,
-                     "name": str(r.get("name") or "")})
+                     "name": _clean(str(r.get("name") or ""))})
     signature = (signature or "").strip() or DEFAULT_SIGNATURE.get(
         lang, DEFAULT_SIGNATURE["en"])
     return {
@@ -88,6 +95,10 @@ def deliver(mailing: dict, mailer_cfg: dict | None, timeout=30) -> dict:
     if not url:
         return {"delivered": False, "via": None,
                 "note": "no mailer webhook configured (config: mailer.webhook_url)"}
+    if not re.match(r"https?://", url, re.IGNORECASE):
+        # only HTTP(S) — block file://, gopher:// etc. that urllib would honour
+        return {"delivered": False, "via": "webhook",
+                "error": "mailer.webhook_url must be an http(s) URL"}
     try:
         req = urllib.request.Request(url, data=json.dumps(mailing).encode(),
                                      headers={"Content-Type": "application/json"})

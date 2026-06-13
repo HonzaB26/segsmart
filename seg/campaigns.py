@@ -129,9 +129,14 @@ def _sanitize_card(c: dict, keep: str | None = None) -> dict:
 
 
 # a concrete discount the owner never set: '15 %', '20% off', '100 Kč sleva',
-# and qwen's malformed currency-first 'Kč3000' / '€50'
+# qwen's malformed currency-first 'Kč3000' / '€50', and amount-first symbol
+# forms '50€' / '25 $' (symbols are non-word chars, so a trailing \b never
+# matches them — they need their own branch, this bit us once already)
 _INVENTED_DISCOUNT = re.compile(
-    r"\d+\s*%|\d+\s*(?:kč|czk|eur|€|\$|£)\b|(?:kč|czk|eur|€|\$|£)\s*\d+",
+    r"\d+\s*%"                          # 15 %, 20% off
+    r"|(?:kč|czk|eur|€|\$|£)\s*\d+"     # currency-first: €50, Kč 3000
+    r"|\d+\s*(?:kč|czk|eur)\b"          # word currency after amount: 100 Kč
+    r"|\d+\s*[€$£]",                    # symbol currency after amount: 50€, 25 $
     re.IGNORECASE)
 
 

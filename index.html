@@ -136,7 +136,7 @@
     <div class="sub" data-i="tagline">customer segmentation that never leaves your laptop</div>
     <div class="badge" data-i="badge">🔒 Data stays on this machine</div>
     <a class="nav" href="/setup" data-i="nav_setup">⚙ Data setup</a>
-    <a class="nav" href="#" id="langtoggle" title="UI language">🌐 CZ</a>
+    <a class="nav" href="#" id="langtoggle" data-i-title="t_uilang" title="UI language">🌐 CZ</a>
   </header>
   <div class="meta" id="meta">loading…</div>
 
@@ -211,7 +211,7 @@
 
 <div class="modal" id="campModal" role="dialog" aria-modal="true" aria-labelledby="cmSeg">
   <div class="box" id="campBox">
-    <button class="x" id="campClose" aria-label="Close">×</button>
+    <button class="x" id="campClose" data-i-aria-label="b_close" aria-label="Close">×</button>
     <div id="campBody"></div>
   </div>
 </div>
@@ -234,6 +234,7 @@ en:{
   h_campaigns:'AI campaign suggestions', h_season:'Seasonality',
   h_validation:'Validation', since_last:'Since last run',
   b_export_seg:'Export segment CSV', b_export_all:'Export all customers', b_close:'Close',
+  t_uilang:'UI language',
   footer:'SegSmart · MBA Project 2026 · runs fully offline · RFM + KMeans + on-device LLM',
   f_setup:'data setup',
   meta:'{tx} transactions · {cu} customers · {or} orders · {from} → {to} · {co} countries · computed in {s}s',
@@ -301,6 +302,7 @@ cs:{
   h_campaigns:'Návrhy AI kampaní', h_season:'Sezónnost',
   h_validation:'Validace', since_last:'Od minulého běhu',
   b_export_seg:'Export segmentu (CSV)', b_export_all:'Export všech zákazníků', b_close:'Zavřít',
+  t_uilang:'Jazyk rozhraní',
   footer:'SegSmart · MBA projekt 2026 · běží zcela offline · RFM + KMeans + lokální LLM',
   f_setup:'nastavení dat',
   meta:'{tx} transakcí · {cu} zákazníků · {or} objednávek · {from} → {to} · {co} zemí · spočteno za {s} s',
@@ -391,6 +393,8 @@ const fmtDec = n => n==null ? 'n/a' : Number(n).toLocaleString(LOC());
 
 function applyLang(){
   document.querySelectorAll('[data-i]').forEach(el=>{ el.innerHTML = t(el.dataset.i); });
+  document.querySelectorAll('[data-i-title]').forEach(el=>{ el.title = t(el.dataset.iTitle); });
+  document.querySelectorAll('[data-i-aria-label]').forEach(el=>{ el.setAttribute('aria-label', t(el.dataset.iAriaLabel)); });
   $('#langtoggle').textContent = uiLang==='cs' ? '🌐 EN' : '🌐 CZ';
   document.documentElement.lang = uiLang;
   if(CUR) render(CUR); else if($('#meta').dataset.empty) $('#meta').innerHTML = t('empty');
