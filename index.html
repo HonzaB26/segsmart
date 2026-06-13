@@ -263,6 +263,7 @@ en:{
   need_value:'enter the discount value', need_code:'enter the code from your shop system',
   regenerating:'regenerating…', launching:'launching…',
   recipients:'recipients', with_email:'with e-mail', download:'download',
+  no_mailer_dl:'no mailer connected — download a file for any mailer:',
   confirm_launch:'⚠ This will go to {n} recipients ({d} with e-mail){hook}.',
   hook_live:' — your mailer webhook WILL be called', hook_file:' — saves a file, no mailer configured',
   pv_subject:'Subject', b_confirm:'🚀 Confirm & launch', b_cancel:'Cancel',
@@ -337,6 +338,7 @@ cs:{
   need_value:'zadejte výši slevy', need_code:'zadejte kód z vašeho e-shopu',
   regenerating:'přegenerovávám…', launching:'spouštím…',
   recipients:'příjemců', with_email:'s e-mailem', download:'stáhnout',
+  no_mailer_dl:'mailer není připojen – stáhněte soubor pro libovolnou rozesílku:',
   confirm_launch:'⚠ Půjde {n} příjemcům ({d} s e-mailem){hook}.',
   hook_live:' – zavolá se váš mailer webhook', hook_file:' – jen uloží soubor, mailer není nastaven',
   pv_subject:'Předmět', b_confirm:'🚀 Potvrdit a spustit', b_cancel:'Zrušit',
@@ -676,10 +678,15 @@ async function doLaunch(i, cp, recipients, lang, cur, st, box){
         return a;
       };
       const base=j.saved.split('/').pop().replace(/\.json$/,'');
+      const dl=j.delivery||{};
+      // delivered = webhook fired; error = webhook tried but failed; neither =
+      // no mailer wired, so the download below IS how you send it
+      const deliveryMsg = dl.delivered ? 'webhook ✓'
+        : dl.error ? ('webhook ✗ '+esc(dl.error))
+        : t('no_mailer_dl');
       st.innerHTML=`✓ ${j.recipients} ${t('recipients')}`
         + (j.deliverable!=null?` (${j.deliverable} ${t('with_email')})`:'')
-        + ` → ${esc(j.saved)} · `
-        + (j.delivery.delivered?'webhook ✓':esc(j.delivery.note||j.delivery.error||''))+' · ';
+        + ` → ${esc(j.saved)}<br>${deliveryMsg} `;
       st.appendChild(mk('JSON', JSON.stringify(j.mailing,null,2), base+'.json', 'application/json'));
       // a recipients CSV any mailer can import directly: email, name, subject
       const m=j.mailing;
