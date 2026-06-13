@@ -245,6 +245,17 @@ class H(BaseHTTPRequestHandler):
                 if not (0 <= idx < len(cards)):
                     return self._send(400, json.dumps(
                         {"error": f"index {idx} out of range (0..{len(cards)-1})"}))
+                # cards are addressed by index, but a re-run can reorder them
+                # (revenue ranking + the appended prospect card). If the client
+                # sends what it THINKS sits at idx, verify before mutating so an
+                # edit can't land on the wrong card. Reject -> client reloads.
+                expect = req.get("expect")
+                if isinstance(expect, dict):
+                    cur = cards[idx]
+                    if (cur.get("segment") != expect.get("segment") or
+                            (cur.get("audience") or None) != (expect.get("audience") or None)):
+                        return self._send(409, json.dumps(
+                            {"error": "card changed since load — reload and retry"}))
                 allowed = ("headline", "body", "objective", "channel", "offer", "rationale")
                 edited = False
                 for k in allowed:

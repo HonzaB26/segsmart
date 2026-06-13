@@ -131,7 +131,8 @@ CI (`.github/workflows/ci.yml`) runs pytest on every push/PR. Keep it green.
 | `seg/sniff.py` → `seg/loader.py` | bytes → raw frame → canonical frame |
 | `seg/mapping.py` | header+samples → proposed column mapping (LLM + heuristic) |
 | `seg/features.py` → `seg/segment.py` | RFM + behavioral features → segments (rules + KMeans cross-check) |
-| `seg/seasonality.py`, `seg/campaigns.py` | monthly index; LLM campaign cards |
+| `seg/lookalikes.py` | cosine-kNN on the scaled RFM matrix: `lookalikes(id)` + `expand_segment(seg)` (non-members nearest the segment centre). Powers `result['prospects']` ("grow your best segment") + the grow campaign card. No torch — a 2D-attention encoder was tried and lost (branch `experiment/2d-attention`). |
+| `seg/seasonality.py`, `seg/campaigns.py` | monthly index; LLM campaign cards. `card_for_prospects` / `all_cards(..., prospects=stats)` add one `audience:"prospects"` "grow" card; launch targets the prospect list, resolving contact from `result['customers']` (prospects carry id+behaviour only, never contact PII). |
 | `seg/external.py` | owner-uploaded daily factors (FX/weather/promo) → revenue impact, scored against the persisted no-PII daily series (`/api/external_impact`) |
 | `seg/products.py` | product-mix cross-tab: segment × category → revenue + customers. Categories come from `seg/catalog.py` first, else local LLM / heuristic, or a `category` column the source provides. Stored as `product_mix` in `result.json`. |
 | `seg/catalog.py` | product-id → `cat_1`/`cat_2` hierarchy from `data/product_catalog.csv`; unknown ids generated via local LLM (Ollama) and appended, heuristic fallback offline. |

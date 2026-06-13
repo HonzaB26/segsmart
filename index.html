@@ -834,7 +834,8 @@ async function cardAction(act, i){
     Object.assign(CUR.campaigns[i], edited);
     try{
       const r=await fetch('/api/update_card',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({index:i, fields:edited})});
+        body:JSON.stringify({index:i, fields:edited,
+          expect:{segment:cp.segment, audience:cp.audience||null}})});
       const j=await r.json();
       if(j.error){ es.textContent=t('save_failed')+' '+j.error; return; }
     }catch(e){ es.textContent=t('save_failed')+' '+e; return; }
@@ -858,10 +859,16 @@ async function cardAction(act, i){
     return;
   }
   if(act==='launch'){
-    const recipients = cp.audience==='prospects'
-      ? ((CUR.prospects||{}).items||[]).map(x=>({id:x.id, email:x.email||'', name:x.name||''}))
-      : (CUR.customers||[]).filter(x=>x.segment===cp.segment)
-          .map(x=>({id:x.id, email:x.email||'', name:x.name||''}));
+    let recipients;
+    if(cp.audience==='prospects'){
+      // prospects carry id + behaviour only; resolve contact from customers
+      const cmap={}; (CUR.customers||[]).forEach(x=>cmap[x.id]={email:x.email||'', name:x.name||''});
+      recipients=((CUR.prospects||{}).items||[]).map(x=>({id:x.id,
+        email:(cmap[x.id]||{}).email||'', name:(cmap[x.id]||{}).name||''}));
+    } else {
+      recipients=(CUR.customers||[]).filter(x=>x.segment===cp.segment)
+        .map(x=>({id:x.id, email:x.email||'', name:x.name||''}));
+    }
     // step 1: ask the server for the EXACT e-mail and show it for review —
     // nothing is saved or delivered until the user confirms
     st.textContent=t('launching');

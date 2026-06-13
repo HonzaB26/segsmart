@@ -260,14 +260,15 @@ def analyze(df, currency="£", use_llm=True, out="out/result.json",
             prospects["for_segment"] = seed
             pf = expand_segment(feat, seed, k=15)
             for r in pf.itertuples():
-                cid = str(r.customer_id)
+                # id + behaviour only — NO contact fields. email/name live solely
+                # in result['customers']; launch resolves them there by id. This
+                # keeps customer PII in one place (and out of a second array the
+                # no-PII tripwire would have to police separately).
                 prospects["items"].append({
-                    "id": cid, "current_segment": r.segment,
+                    "id": str(r.customer_id), "current_segment": r.segment,
                     "similarity": float(r.similarity),
                     "recency": int(r.recency), "frequency": int(r.frequency),
                     "monetary": round(float(r.monetary), 2),
-                    "email": contact["email"].get(cid, ""),
-                    "name": contact["name"].get(cid, ""),
                 })
             if len(pf):
                 total_rev = float(meta["revenue"]) or 1.0

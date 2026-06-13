@@ -65,3 +65,25 @@ def test_bad_index_and_shape_rejected(http):
     base, _ = http
     assert _post(base + "/api/update_card", {"index": 99, "fields": {"headline": "x"}})[0] == 400
     assert _post(base + "/api/update_card", {"index": "0", "fields": {}})[0] == 400
+
+
+def test_identity_mismatch_rejected(http):
+    base, tmp = http
+    # client thinks index 0 is the prospect 'grow' card, but on disk it's the
+    # Champions segment card -> reordered since load -> reject, don't mis-save
+    code, body = _post(base + "/api/update_card",
+                       {"index": 0, "fields": {"headline": "Should not stick"},
+                        "expect": {"segment": "Prospects", "audience": "prospects"}})
+    assert code == 409 and "reload" in body["error"]
+    saved = json.loads((tmp / "out" / "result.json").read_text(encoding="utf-8"))
+    assert saved["campaigns"][0]["headline"] == "Old"      # untouched
+
+
+def test_identity_match_saves(http):
+    base, tmp = http
+    code, body = _post(base + "/api/update_card",
+                       {"index": 0, "fields": {"headline": "Matched"},
+                        "expect": {"segment": "Champions", "audience": None}})
+    assert code == 200 and body["saved"] is True
+    saved = json.loads((tmp / "out" / "result.json").read_text(encoding="utf-8"))
+    assert saved["campaigns"][0]["headline"] == "Matched"

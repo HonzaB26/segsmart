@@ -99,6 +99,17 @@ def test_demo_result_is_anonymized():
         assert not c.get("name"), \
             f"customer name in tracked demo result (real-shop PII?): {c.get('name')!r}"
 
+    # prospects.items must carry NO contact PII — only an id + behaviour. The id
+    # must not be e-mail-shaped, and if a contact field ever sneaks back in it
+    # must be empty/fake. (Catches a real-shop run persisted by accident.)
+    for p in data.get("prospects", {}).get("items", []):
+        assert not EMAIL.search(p["id"]), f"email-shaped id in prospects: {p['id']}"
+        pe = p.get("email", "")
+        assert pe == "" or FAKE_DOMAIN.search(pe), \
+            f"real-looking e-mail in prospects.items: {pe}"
+        assert not p.get("name"), \
+            f"name in prospects.items (real-shop PII?): {p.get('name')!r}"
+
 
 def test_private_artifacts_not_tracked():
     tracked = subprocess.run(["git", "ls-files"], cwd=REPO, capture_output=True,
