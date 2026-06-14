@@ -28,3 +28,5 @@ out/history/
 out/mailings/
 # presentation working notes (not for publication)
 docs/presentation-notes.md
+# MBA deck credits the team by real name -> local only, never in the public repo
+SegSmart_MBA_Presentation.html
